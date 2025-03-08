@@ -74,7 +74,10 @@ static int cmd_x(char* args) {
 }
 
 static int cmd_expr(char* args) {
-  return 0;
+  int val;
+  if (args == NULL) val = 0;
+  else val = args[0];
+  return val;
 }
 
 static int cmd_w(char* args) {
