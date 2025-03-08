@@ -74,7 +74,7 @@ static int cmd_expr(char* args) {
   if (args == NULL) { 
     val = 0;
   } else { 
-    val = args[0];
+    val = args[0] - '0';
     printf("%d\n", val);
   }
   return 0;
