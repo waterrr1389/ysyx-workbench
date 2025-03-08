@@ -54,6 +54,10 @@ static int cmd_q(char *args) {
 
 static int cmd_help(char *args);
 
+static int cmd_si(char* args) {
+  return
+}
+
 static struct {
   const char *name;
   const char *description;
@@ -62,7 +66,12 @@ static struct {
   { "help", "Display information about all supported commands", cmd_help },
   { "c", "Continue the execution of the program", cmd_c },
   { "q", "Exit NEMU", cmd_q },
-
+  { "si",   "Execute N instructions then pause (default N=1)", cmd_si },
+  { "info", "Print register status or watchpoint information (info r|w)", cmd_info },
+  { "x",    "Scan memory: x N EXPR - Display N*4 bytes from address EXPR", cmd_x },
+  { "p",    "Evaluate expression: p EXPR - Calculate value of EXPR", cmd_expr },
+  { "w",    "Set watchpoint: w EXPR - Pause when EXPR value changes", cmd_w },
+  { "d",    "Delete watchpoint: d N - Remove watchpoint number N", cmd_d },
   /* TODO: Add more commands */
 
 };
