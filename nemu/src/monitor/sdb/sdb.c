@@ -74,9 +74,9 @@ static int cmd_expr(char* args) {
   if (args == NULL) { 
     val = 0;
   } else { 
-    printf("%c\n", args[0]);
-    val = args[0] - '0';
-    printf("%d\n", val);
+    args[strlen(args)+1] = '\0';
+    sscanf(args, "%x", &val);
+    printf("%08x\n", val);
   }
   return 0;
 }
