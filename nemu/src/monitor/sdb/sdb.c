@@ -84,7 +84,7 @@ static int cmd_x(char* args) {
   if (strlen(args) < 2) {
     return 1; 
   } else {
-    int n = args[0] - '0';
+    int n = args[0];
     int val = cmd_expr(args+1);
     int* addr = (int*)(uint64_t)val;
     for (int i = 0; i < n; i++) {
