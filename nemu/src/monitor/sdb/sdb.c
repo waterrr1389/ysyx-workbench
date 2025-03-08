@@ -18,6 +18,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "sdb.h"
+#include "memory/paddr.h"
 
 static int is_batch_mode = false;
 
@@ -82,20 +83,24 @@ static int cmd_expr(char* args) {
 }
 
 static int cmd_x(char* args) {
-  if (strlen(args) < 2) {
-    return 1; 
-  } else {
-    int n, expr;
-    char* arg1 = strtok(args, " ");
-    char* arg2 = strtok(NULL, " ");
-    sscanf(arg1, "%d", &n);
-    printf("%d\n", n);
-    expr = cmd_expr(arg2);
-    int* addr = (int*)(uint64_t)(uint32_t)expr;
-    for (int i = 0; i < n; i++) {
-      printf("%08x\n", addr[i]);
-    }
-  }
+  // if (strlen(args) < 2) {
+  //   return 1; 
+  // } else {
+  //   int n, expr;
+
+  //   char* arg1 = strtok(args, " ");
+  //   char* arg2 = strtok(NULL, " ");
+  //   sscanf(arg1, "%d", &n);
+  //   expr = (uint32_t)cmd_expr(arg2);
+
+  //   // for (int i = 0; i < n; i++) {
+  //   //   uint8_t* host_addr = (expr+i);
+  //   //   for (int j = 0; j < 4; j++) {
+  //   //     printf("%02x", host_addr+j);
+  //   //   }
+  //   //   printf("\n");
+  //   // }
+  // }
   return 0;
 }
 
