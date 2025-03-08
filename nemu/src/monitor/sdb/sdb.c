@@ -70,7 +70,7 @@ static int cmd_info(char* args) {
 }
 
 static int cmd_expr(char* args) {
-  int val;
+  unsigned val;
   if (args == NULL) { 
     val = 0;
   } else { 
