@@ -95,9 +95,9 @@ static int cmd_x(char* args) {
     expr = (uint32_t)cmd_expr(arg2);
     uint8_t* host_addr = guest_to_host(expr);
 
-    for (int i = 0; i < 4*n; i++) {
-      printf("%02x", host_addr[i]);
-      if (i % 3 == 0) printf("\n");
+    for (int i = 1; i <= 4*n; i++) {
+      printf("%02x", host_addr[i-1]);
+      if (i % 4 == 0) printf("\n");
     }
   }
   return 0;
