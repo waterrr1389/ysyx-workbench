@@ -83,24 +83,24 @@ static int cmd_expr(char* args) {
 }
 
 static int cmd_x(char* args) {
-  // if (strlen(args) < 2) {
-  //   return 1; 
-  // } else {
-  //   int n, expr;
+  if (strlen(args) < 2) {
+    return 1; 
+  } else {
+    int n, expr;
 
-  //   char* arg1 = strtok(args, " ");
-  //   char* arg2 = strtok(NULL, " ");
-  //   sscanf(arg1, "%d", &n);
-  //   expr = (uint32_t)cmd_expr(arg2);
+    char* arg1 = strtok(args, " ");
+    char* arg2 = strtok(NULL, " ");
+    sscanf(arg1, "%d", &n);
+    expr = (uint32_t)cmd_expr(arg2);
 
-  //   // for (int i = 0; i < n; i++) {
-  //   //   uint8_t* host_addr = (expr+i);
-  //   //   for (int j = 0; j < 4; j++) {
-  //   //     printf("%02x", host_addr+j);
-  //   //   }
-  //   //   printf("\n");
-  //   // }
-  // }
+    for (int i = 0; i < n; i++) {
+      uint8_t* host_addr = guest_to_host(expr+i);
+      for (int j = 0; j < 4; j++) {
+        printf("%02x", host_addr[j]);
+      }
+      printf("\n");
+    }
+  }
   return 0;
 }
 
