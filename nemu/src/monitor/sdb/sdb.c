@@ -79,7 +79,7 @@ static int cmd_expr(char* args) {
     val = 0;
   } else { 
     val = args[0];
-    printf("%d", val);
+    printf("%d\n", val);
   }
   return val;
 }
