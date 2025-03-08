@@ -86,7 +86,7 @@ static int cmd_x(char* args) {
     return 1; 
   } else {
     int n = args[0];
-    printf("%c", args[0]);
+    printf("%c\n", args[0]);
     printf("%d\n", n);
     // int val = cmd_expr(args+1);
     // int* addr = (int*)(uint64_t)(uint32_t)val;
