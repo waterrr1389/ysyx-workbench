@@ -54,8 +54,13 @@ static int cmd_q(char *args) {
 static int cmd_help(char *args);
 
 static int cmd_si(char* args) {
-  int num_inst = args[0]; 
-  cpu_exec(num_inst);
+  int n;
+  if (args == NULL) {
+    n = 1;
+  } else {
+    n = args[0];
+  }
+  cpu_exec(n);
   return 0;
 }
 
