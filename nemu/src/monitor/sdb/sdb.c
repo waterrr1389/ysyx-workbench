@@ -77,7 +77,7 @@ static int cmd_expr(char* args) {
   } else { 
     args[strlen(args)+1] = '\0';
     sscanf(args, "%x", &val);
-    printf("%08x\n", val);
+    printf("0x%08x\n", val);
   }
   return val;
 }
