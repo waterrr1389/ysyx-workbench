@@ -85,16 +85,15 @@ static int cmd_x(char* args) {
   if (strlen(args) < 2) {
     return 1; 
   } else {
-    printf("%s\n", args);
-    int n = args[0];
-    printf("%c\n", args[0]);
-    printf("%d\n", n);
-    // int val = cmd_expr(args+1);
-    // int* addr = (int*)(uint64_t)(uint32_t)val;
-    // for (int i = 0; i < n; i++) {
-    //   printf("%08x\n", addr[i]);
-    // }
-    // printf("\n");
+    int n, expr;
+    char* arg1 = strtok(args, " ");
+    char* arg2 = strtok(NULL, " ");
+    sscanf(arg1, "%d", &n);
+    expr = cmd_expr(arg2);
+    int* addr = (int*)(uint64_t)(uint32_t)expr;
+    for (int i = 0; i < n; i++) {
+      printf("%08x\n", addr[i]);
+    }
   }
   return 0;
 }
