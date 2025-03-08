@@ -89,6 +89,7 @@ static int cmd_x(char* args) {
     char* arg1 = strtok(args, " ");
     char* arg2 = strtok(NULL, " ");
     sscanf(arg1, "%d", &n);
+    printf("%d\n", n);
     expr = cmd_expr(arg2);
     int* addr = (int*)(uint64_t)(uint32_t)expr;
     for (int i = 0; i < n; i++) {
