@@ -70,7 +70,7 @@ static int cmd_info(char* args) {
 }
 
 static int cmd_expr(char* args) {
-  unsigned val;
+  int val;
   if (args == NULL) { 
     val = 0;
   } else { 
@@ -78,7 +78,7 @@ static int cmd_expr(char* args) {
     sscanf(args, "%x", &val);
     printf("%08x\n", val);
   }
-  return 0;
+  return val;
 }
 
 static int cmd_x(char* args) {
@@ -87,7 +87,7 @@ static int cmd_x(char* args) {
   } else {
     int n = args[0] - '0';
     int val = cmd_expr(args+1);
-    int* addr = (int*)(uint64_t)val;
+    int* addr = (int*)(uint64_t)(uint32_t)val;
     for (int i = 0; i < n; i++) {
       printf("%08x\n", addr[i]);
     }
