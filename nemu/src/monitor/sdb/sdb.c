@@ -86,7 +86,8 @@ static int cmd_x(char* args) {
   if (strlen(args) < 2) {
     return 1; 
   } else {
-    int n, expr;
+    int n; 
+    uint32_t expr;
 
     char* arg1 = strtok(args, " ");
     char* arg2 = strtok(NULL, " ");
