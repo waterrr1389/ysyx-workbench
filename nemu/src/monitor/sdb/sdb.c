@@ -69,19 +69,30 @@ static int cmd_info(char* args) {
   return 0;
 }
 
-static int cmd_x(char* args) {
-  return 0;
-}
-
 static int cmd_expr(char* args) {
   int val;
   if (args == NULL) { 
     val = 0;
   } else { 
-    val = args[0];
+    val = args[0] - '0';
     printf("%d\n", val);
   }
-  return val;
+  return 0;
+}
+
+static int cmd_x(char* args) {
+  if (strlen(args) < 2) {
+    return 1; 
+  } else {
+    int n = args[0] - '0';
+    int val = cmd_expr(args+1);
+    int* addr = (int*)(uint64_t)val;
+    for (int i = 0; i < n; i++) {
+      printf("%08x\n", addr[i]);
+    }
+    printf("\n");
+  }
+  return 0;
 }
 
 static int cmd_w(char* args) {
