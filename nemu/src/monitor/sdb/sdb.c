@@ -97,7 +97,7 @@ static int cmd_x(char* args) {
 
     for (int i = 0; i < 4*n; i++) {
       printf("%02x", host_addr[i]);
-      if (i % 4 == 0) printf("\n");
+      if (i % 3 == 0) printf("\n");
     }
   }
   return 0;
