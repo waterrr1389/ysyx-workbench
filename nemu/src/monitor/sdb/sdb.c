@@ -85,6 +85,7 @@ static int cmd_x(char* args) {
   if (strlen(args) < 2) {
     return 1; 
   } else {
+    printf("%s", args);
     int n = args[0] - '0';
     printf("%d", n);
     int val = cmd_expr(args+1);
