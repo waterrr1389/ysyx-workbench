@@ -87,12 +87,12 @@ static int cmd_x(char* args) {
   } else {
     int n = args[0] - '0';
     printf("%d", n);
-    int val = cmd_expr(args+1);
-    int* addr = (int*)(uint64_t)(uint32_t)val;
-    for (int i = 0; i < n; i++) {
-      printf("%08x\n", addr[i]);
-    }
-    printf("\n");
+    // int val = cmd_expr(args+1);
+    // int* addr = (int*)(uint64_t)(uint32_t)val;
+    // for (int i = 0; i < n; i++) {
+    //   printf("%08x\n", addr[i]);
+    // }
+    // printf("\n");
   }
   return 0;
 }
