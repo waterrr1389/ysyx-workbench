@@ -17,6 +17,7 @@
 #include <cpu/cpu.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <memory/paddr.h>
 #include "sdb.h"
 
 static int is_batch_mode = false;
@@ -47,7 +48,6 @@ static int cmd_c(char *args) {
   return 0;
 }
 
-
 static int cmd_q(char *args) {
   return -1;
 }
@@ -55,7 +55,60 @@ static int cmd_q(char *args) {
 static int cmd_help(char *args);
 
 static int cmd_si(char* args) {
-  return
+  int n;
+  if (args == NULL) {
+    n = 1;
+  } else {
+    n = args[0];
+  }
+  cpu_exec(n);
+  return 0;
+}
+
+static int cmd_info(char* args) {
+  isa_reg_display();
+  return 0;
+}
+
+static int cmd_expr(char* args) {
+  int val;
+  if (args == NULL) { 
+    val = 0;
+  } else { 
+    args[strlen(args)+1] = '\0';
+    sscanf(args, "%x", &val);
+    printf("0x%08x\n", val);
+  }
+  return val;
+}
+
+static int cmd_x(char* args) {
+  if (strlen(args) < 2) {
+    return 1; 
+  } else {
+    int n; 
+    uint32_t expr;
+
+    char* arg1 = strtok(args, " ");
+    char* arg2 = strtok(NULL, " ");
+    sscanf(arg1, "%d", &n);
+    expr = (uint32_t)cmd_expr(arg2);
+    uint8_t* host_addr = guest_to_host(expr);
+
+    for (int i = 1; i <= 4*n; i++) {
+      printf("%02x", host_addr[i-1]);
+      if (i % 4 == 0) printf("\n");
+    }
+  }
+  return 0;
+}
+
+static int cmd_w(char* args) {
+  return 0;
+}
+
+static int cmd_d(char* args) {
+  return 0;
 }
 
 static struct {
