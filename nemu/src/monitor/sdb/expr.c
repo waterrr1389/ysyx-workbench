@@ -253,14 +253,13 @@ int test() {
   FILE* fp = fopen("/home/waterrr/ysyx-workbench/nemu/tools/gen-expr/input", "r");
   Assert(fp, "%s\n", "Failed to open file");
 
-  char str[2048];
+  char str[2048] = {0};
   int line = 1;
   word_t val1, val2;
   bool success;
 
   while (fgets(str, sizeof(str), fp) != NULL) {
       // 计算表达式的值
-      memset(str, 0, 2048);
       str[sizeof(str) - 1] = '\0';
       val1 = expr(str, &success);
       if (!success) {
@@ -281,6 +280,8 @@ int test() {
         printf("%d line is incorrect\n", line);
       }
       line++;
+      
+      memset(str, 0, 2048);
   }
 
   fclose(fp);
