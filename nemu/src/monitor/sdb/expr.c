@@ -1,17 +1,17 @@
 /***************************************************************************************
-* Copyright (c) 2014-2024 Zihao Yu, Nanjing University
-*
-* NEMU is licensed under Mulan PSL v2.
-* You can use this software according to the terms and conditions of the Mulan PSL v2.
-* You may obtain a copy of Mulan PSL v2 at:
-*          http://license.coscl.org.cn/MulanPSL2
-*
-* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
-* EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
-* MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
-*
-* See the Mulan PSL v2 for more details.
-***************************************************************************************/
+ * Copyright (c) 2014-2024 Zihao Yu, Nanjing University
+ *
+ * NEMU is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan
+ *PSL v2. You may obtain a copy of Mulan PSL v2 at:
+ *          http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY
+ *KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ *NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ *
+ * See the Mulan PSL v2 for more details.
+ ***************************************************************************************/
 
 #include <isa.h>
 
@@ -21,7 +21,9 @@
 #include <regex.h>
 
 enum {
-  TK_NOTYPE = 256, TK_EQ, TK_DECIMAL
+  TK_NOTYPE = 256,
+  TK_EQ,
+  TK_DECIMAL
 
   /* TODO: Add more token types */
 
@@ -32,20 +34,17 @@ static struct rule {
   int token_type;
 } rules[] = {
 
-  /* TODO: Add more rules.
-   * Pay attention to the precedence level of different rules.
-   */
+    /* TODO: Add more rules.
+     * Pay attention to the precedence level of different rules.
+     */
 
-  {" +", TK_NOTYPE},    // spaces
-  {"\\+", '+'},         // plus
-  {"==", TK_EQ},        // equal
-  {"\\-", '-'},         // minus
-  {"\\*", '*'},         // multiply
-  {"\\/", '/'},         // division
-  {"\\(", '('},
-  {"\\)", ')'},
-  {"[0-9]+", TK_DECIMAL}
-};
+    {" +", TK_NOTYPE}, // spaces
+    {"\\+", '+'},      // plus
+    {"==", TK_EQ},     // equal
+    {"\\-", '-'},      // minus
+    {"\\*", '*'},      // multiply
+    {"\\/", '/'},      // division
+    {"\\(", '('},      {"\\)", ')'}, {"[0-9]+", TK_DECIMAL}};
 
 #define NR_REGEX ARRLEN(rules)
 
@@ -59,7 +58,7 @@ void init_regex() {
   char error_msg[128];
   int ret;
 
-  for (i = 0; i < NR_REGEX; i ++) {
+  for (i = 0; i < NR_REGEX; i++) {
     ret = regcomp(&re[i], rules[i].regex, REG_EXTENDED);
     if (ret != 0) {
       regerror(ret, &re[i], error_msg, 128);
@@ -74,7 +73,7 @@ typedef struct token {
 } Token;
 
 static Token tokens[256] __attribute__((used)) = {};
-static int nr_token __attribute__((used))  = 0;
+static int nr_token __attribute__((used)) = 0;
 
 static bool make_token(char *e) {
   int position = 0;
@@ -85,13 +84,14 @@ static bool make_token(char *e) {
 
   while (e[position] != '\0') {
     /* Try all rules one by one. */
-    for (i = 0; i < NR_REGEX; i ++) {
-      if (regexec(&re[i], e + position, 1, &pmatch, 0) == 0 && pmatch.rm_so == 0) {
+    for (i = 0; i < NR_REGEX; i++) {
+      if (regexec(&re[i], e + position, 1, &pmatch, 0) == 0 &&
+          pmatch.rm_so == 0) {
         char *substr_start = e + position;
         int substr_len = pmatch.rm_eo;
 
-        Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s",
-            i, rules[i].regex, position, substr_len, substr_len, substr_start);
+        Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s", i,
+            rules[i].regex, position, substr_len, substr_len, substr_start);
 
         position += substr_len;
 
@@ -101,27 +101,29 @@ static bool make_token(char *e) {
          */
 
         switch (rules[i].token_type) {
-          case '+':
-          case '-':
-          case '*':
-          case '/':
-          case '(':
-          case ')':
-          case TK_EQ:
-          case TK_DECIMAL:
-            Token* token = tokens+nr_token;
-            token->type = rules[i].token_type;
-            nr_token++; 
-            //Assert(((ARRLEN(token->str)-1) >= substr_len), "%s\n", "String Buffer Overflow.");
-            if (ARRLEN(token->str) < substr_len) return false;
-            strncpy(token->str, substr_start, substr_len);
-            token->str[substr_len] = '\0';
-            break; 
-          case TK_NOTYPE:
-            break;
-          default: 
-            Log("Unrecognized token at position: %d with len: %d",
-              position, substr_len);
+        case '+':
+        case '-':
+        case '*':
+        case '/':
+        case '(':
+        case ')':
+        case TK_EQ:
+        case TK_DECIMAL:
+          Token *token = tokens + nr_token;
+          token->type = rules[i].token_type;
+          nr_token++;
+          // Assert(((ARRLEN(token->str)-1) >= substr_len), "%s\n", "String
+          // Buffer Overflow.");
+          if (ARRLEN(token->str) < substr_len)
+            return false;
+          strncpy(token->str, substr_start, substr_len);
+          token->str[substr_len] = '\0';
+          break;
+        case TK_NOTYPE:
+          break;
+        default:
+          Log("Unrecognized token at position: %d with len: %d", position,
+              substr_len);
         }
 
         break;
@@ -137,11 +139,9 @@ static bool make_token(char *e) {
   return true;
 }
 
-bool check_expr(int p, int q) {
-  return true;
-}
+bool check_expr(int p, int q) { return true; }
 
-//word_t common.h uint_32 or 64
+// word_t common.h uint_32 or 64
 word_t expr(char *e, bool *success) {
   if (!make_token(e)) {
     *success = false;
@@ -157,9 +157,14 @@ word_t expr(char *e, bool *success) {
 
 int get_priority(int type) {
   switch (type) {
-    case '+': case '-': return 1;
-    case '*': case '/': return 2;
-    default: return 3;
+  case '+':
+  case '-':
+    return 1;
+  case '*':
+  case '/':
+    return 2;
+  default:
+    return 3;
   }
 }
 
@@ -174,55 +179,56 @@ bool check_parentheses(int p, int q) {
   // 遍历所有 token
   for (int i = p; i <= q; i++) {
     int type = tokens[i].type;
-    if (type == '(') 
+    if (type == '(')
       close++;
-    if (type == ')') 
+    if (type == ')')
       close--;
-    
+
     // 一旦右括号比左括号多，说明不匹配
-    if (close < 0) return false;
+    if (close < 0)
+      return false;
 
     // 如果中途括号完全闭合了，说明最外层的括号不匹配
-    if (close == 0 && i != p && i != q) return false;
+    if (close == 0 && i != p && i != q)
+      return false;
   }
 
   // 括号未闭合
-  if (close != 0) return false;
+  if (close != 0)
+    return false;
 
   return true;
 }
-
 
 uint32_t eval(int p, int q) {
   if (p > q) {
     /* Bad expression */
     panic("%s\n", "Bad expression");
-  }
-  else if (p == q) {
+  } else if (p == q) {
     /* Single token.
      * For now this token should be a number.
      * Return the value of the number.
      */
     if (tokens[p].type == TK_DECIMAL) {
       uint32_t val;
-      sscanf(tokens[p].str, "%u",&val);
-      return val; 
+      sscanf(tokens[p].str, "%u", &val);
+      return val;
     }
     return 0;
-  }
-  else if (check_parentheses(p, q)) {
+  } else if (check_parentheses(p, q)) {
     /* The expression is surrounded by a matched pair of parentheses.
      * If that is the case, just throw away the parentheses.
      */
     return eval(p + 1, q - 1);
-  }
-  else {
+  } else {
     int op = -1;
     int min_priority = 3;
     int level = 0;
     for (int i = p; i <= q; i++) {
-      if (tokens[i].type == '(') level++;
-      if (tokens[i].type == ')') level--;
+      if (tokens[i].type == '(')
+        level++;
+      if (tokens[i].type == ')')
+        level--;
 
       if (level == 0) {
         int priority = get_priority(tokens[i].type);
@@ -238,54 +244,57 @@ uint32_t eval(int p, int q) {
     uint32_t op_type = tokens[op].type;
 
     switch (op_type) {
-      case '+': return val1 + val2;
-      case '-': return val1- val2;
-      case '*': return val1 * val2;
-      case '/': 
-        Assert(val2 == 0, "%s\n","Zero Division");
-        return val1 / val2;
-      default: panic("%s\n", "Unknown operator type");
+    case '+':
+      return val1 + val2;
+    case '-':
+      return val1 - val2;
+    case '*':
+      return val1 * val2;
+    case '/':
+      Assert(val2 == 0, "%s\n", "Zero Division");
+      return val1 / val2;
+    default:
+      panic("%s\n", "Unknown operator type");
     }
   }
 }
 
 int test() {
-  FILE* fp = fopen("/home/waterrr/ysyx-workbench/nemu/tools/gen-expr/input", "r");
+  FILE *fp =
+      fopen("/home/waterrr/ysyx-workbench/nemu/tools/gen-expr/input", "r");
   Assert(fp, "%s\n", "Failed to open file");
 
   char str[2048] = {0};
   char exp[2048] = {0};
   int row = 1;
   word_t val1, val2;
-  bool success;
+  bool success = true;
 
   while (fgets(str, sizeof(str), fp) != NULL) {
-      // 解析标准答案的值
-      if (sscanf(str, "%u %s", &val2, exp) != 2) {
-        printf("%d line sscanf() failed\n", row);
-        continue;
-      }
+    // 解析标准答案的值
+    if (sscanf(str, "%u %s", &val2, exp) != 2) {
+      printf("%d line sscanf() failed\n", row);
+      continue;
+    }
 
-      
-      // 计算表达式的值
-      str[strlen(exp) - 1] = '\0';
-      val1 = expr(exp, &success);
-      if (!success) {
-        printf("%d line expr() failed\n", row);
-        continue;
-      }
+    // 计算表达式的值
+    str[strlen(exp) - 1] = '\0';
+    val1 = expr(exp, &success);
+    if (!success) {
+      printf("%d line expr() failed\n", row);
+      continue;
+    }
 
+    // 比较两个结果
+    if (val1 == val2) {
+      printf("%d line is correct\n", row);
+    } else {
+      printf("%d line is incorrect\n", row);
+    }
+    row++;
 
-      // 比较两个结果
-      if (val1 == val2) {
-        printf("%d line is correct\n", row);
-      } else {
-        printf("%d line is incorrect\n", row);
-      }
-      row++;
-
-      memset(str, 0, 2048);
-      memset(exp, 0, 2048);
+    memset(str, 0, 2048);
+    memset(exp, 0, 2048);
   }
 
   fclose(fp);
