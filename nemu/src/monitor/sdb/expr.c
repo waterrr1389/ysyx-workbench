@@ -260,7 +260,8 @@ int test() {
 
   while (fgets(str, sizeof(str), fp) != NULL) {
       // 计算表达式的值
-      str[sizeof(str)-1] = '\0';
+      memset(str, 0, 2048);
+      str[sizeof(str) - 1] = '\0';
       val1 = expr(str, &success);
       if (!success) {
         printf("%d line expr() failed\n", line++);
