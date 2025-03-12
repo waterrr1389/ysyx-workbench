@@ -149,8 +149,8 @@ word_t expr(char *e, bool *success) {
   }
 
   //检查表达式合法性
-  if (check_expr(0, nr_token))
-    return eval(0, nr_token);
+  if (check_expr(0, nr_token - 1))
+    return eval(0, nr_token - 1);
   else
     return 0;
 }
