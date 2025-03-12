@@ -261,7 +261,7 @@ int test() {
 
   while (fgets(str, sizeof(str), fp) != NULL) {
       // 解析标准答案的值
-      if (sscanf(str, "%u %s", &val2, exp) != 1) {
+      if (sscanf(str, "%u %s", &val2, exp) != 2) {
         printf("%d line sscanf() failed\n", row);
         continue;
       }
