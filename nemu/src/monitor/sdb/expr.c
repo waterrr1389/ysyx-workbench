@@ -254,34 +254,38 @@ int test() {
   Assert(fp, "%s\n", "Failed to open file");
 
   char str[2048] = {0};
-  int line = 1;
+  char exp[2048] = {0};
+  int row = 1;
   word_t val1, val2;
   bool success;
 
   while (fgets(str, sizeof(str), fp) != NULL) {
-      // 计算表达式的值
-      str[strlen(str) - 1] = '\0';
-      val1 = expr(str, &success);
-      if (!success) {
-        printf("%d line expr() failed\n", line++);
+      // 解析标准答案的值
+      if (sscanf(str, "%u %s", &val2, exp) != 1) {
+        printf("%d line sscanf() failed\n", row);
         continue;
       }
 
-      // 解析标准答案的值
-      if (sscanf(str, "%u", &val2) != 1) {
-        printf("%d line sscanf() failed\n", line++);
+      
+      // 计算表达式的值
+      str[strlen(exp) - 1] = '\0';
+      val1 = expr(exp, &success);
+      if (!success) {
+        printf("%d line expr() failed\n", row);
         continue;
       }
+
 
       // 比较两个结果
       if (val1 == val2) {
-        printf("%d line is correct\n", line);
+        printf("%d line is correct\n", row);
       } else {
-        printf("%d line is incorrect\n", line);
+        printf("%d line is incorrect\n", row);
       }
-      line++;
+      row++;
 
       memset(str, 0, 2048);
+      memset(exp, 0, 2048);
   }
 
   fclose(fp);
