@@ -298,6 +298,7 @@ int test() {
     char *pos = strchr(str, '\n');  
     if (pos) {
         *pos = '\0';  // 替换为 '\0'      
+        sscanf(str, "%s", exp);
     } else {
       printf("%d line getexpr failed\n", row);
       continue;
