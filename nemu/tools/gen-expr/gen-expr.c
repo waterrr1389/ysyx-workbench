@@ -21,7 +21,6 @@
 #include <string.h>
 
 // this should be enough
-#define MAX_DEPTH 10
 static char buf[65536] = {};
 static char code_buf[65536 + 128] = {}; // a little larger than `buf`
 static char *code_format =
@@ -32,53 +31,8 @@ static char *code_format =
 "  return 0; "
 "}";
 
-static uint32_t choose(uint32_t n) {
-  return ((uint32_t)rand()) % n;
-}
-
-static void gen_space() {
-  int num = choose(3);
-  if (num != 1) return;
-  for (int i = 0; i < num && strlen(buf) < 60000; i++) {
-    strcat(buf, " ");
-  }
-}
-
-static void gen_num() {
-  char num[16];
-  sprintf(num, "%u", (uint32_t)rand()%1000 + 1);
-  strcat(buf, num);
-  gen_space();
-}
-
-static void gen_rand_op() {
-  uint32_t n = choose(4); //0-3
-  char op[4] = {'+', '-', '*', '/'};
-  char op_ch = op[n];
-  char op_str[2] = {op_ch, '\0'};
-  strcat(buf, op_str);
-  //if (n == 3) gen_num();
-  gen_space();
-}
-
-static void gen(char c) {
-  char str[2] = {c, '\0'};
-  strcat(buf, str);
-  gen_space();
-}
-
-static void gen_rand_expr(uint32_t depth) {
-  if (depth <= 0 || strlen(buf) > 60000) {
-    gen_num();
-    return;
-  }
-  else {
-    switch (choose(3)) {
-      case 0: gen_num(); break;
-      case 1: gen('('); gen_rand_expr(depth-1); gen(')'); break;
-      default: gen_rand_expr(depth-1); gen_rand_op(); gen_rand_expr(depth-1); break;
-    }
-  }
+static void gen_rand_expr() {
+  buf[0] = '\0';
 }
 
 int main(int argc, char *argv[]) {
@@ -90,8 +44,7 @@ int main(int argc, char *argv[]) {
   }
   int i;
   for (i = 0; i < loop; i ++) {
-    buf[0] = '\0';
-    gen_rand_expr(MAX_DEPTH);
+    gen_rand_expr();
 
     sprintf(code_buf, code_format, buf);
 
