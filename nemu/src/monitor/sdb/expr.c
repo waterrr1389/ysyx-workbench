@@ -282,7 +282,8 @@ int test() {
   Assert(fp, "%s\n", "Failed to open file");
 
   char str[2048] = {0};
-  char exp[2048] = {0};
+  char* exp = 0;
+  char* pos = 0;
   int row = 1;
   word_t val1, val2;
   bool success = true;
@@ -294,18 +295,20 @@ int test() {
       continue;
     }
 
-    // 找到第一个 '\n'
-    char *pos = strchr(str, '\n');  
+    // 找到表达式
+    pos = strchr(str, ' ');  
     if (pos) {
-        *pos = '\0';  // 替换为 '\0'      
-        sscanf(str, "%s", exp);
+      exp = pos + 1;
+      char* newline = strchr(exp, '\n');
+      if (newline) {
+        *newline = '\0';
+      }
     } else {
       printf("%d line getexpr failed\n", row);
       continue;
     }
 
     // 计算表达式的值
-    str[strlen(exp) - 1] = '\0';
     val1 = expr(exp, &success);
     if (!success) {
       printf("%d line expr() failed\n", row);
@@ -321,7 +324,6 @@ int test() {
     row++;
 
     memset(str, 0, 2048);
-    memset(exp, 0, 2048);
   }
 
   fclose(fp);
