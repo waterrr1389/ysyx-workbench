@@ -32,12 +32,9 @@ static struct rule {
   const char *regex;
   int token_type;
 } rules[] = {
-    /* 注意顺序：先匹配负号，再匹配减法 */
     {" +", TK_NOTYPE}, // spaces
     {"\\+", '+'},      // plus
     {"==", TK_EQ},     // equal
-    // 匹配单目负号：当负号出现在表达式开始或左括号、加、减、乘、除后面时认为是负号
-    {"(?<=^|\\(|\\+|\\-|\\*|\\/)-", TK_NEG},
     {"\\-", '-'},      // 二元减法运算符
     {"\\*", '*'},      // multiply
     {"\\/", '/'},      // division
@@ -50,6 +47,7 @@ static struct rule {
 
 static regex_t re[NR_REGEX] = {};
 uint32_t eval(int p, int q);
+void categorize_minus();
 /* Rules are used for many times.
  * Therefore we compile them only once before any usage.
  */
@@ -57,6 +55,8 @@ void init_regex() {
   int i;
   char error_msg[128];
   int ret;
+
+  categorize_minus();
 
   for (i = 0; i < NR_REGEX; i++) {
     ret = regcomp(&re[i], rules[i].regex, REG_EXTENDED);
@@ -137,6 +137,23 @@ static bool make_token(char *e) {
   }
 
   return true;
+}
+
+void categorize_minus() {
+  for (int i = 0; i < nr_token; i++) {
+      if (tokens[i].type == '-') {
+          // 负号情况：
+          // 1. 这是第一个 token（表达式以 `-` 开头）
+          // 2. 负号前面是 `(`、`+`、`-`、`*`、`/`
+          if (i == 0 || tokens[i - 1].type == '(' || tokens[i - 1].type == '+' ||
+              tokens[i - 1].type == '-' || tokens[i - 1].type == '*' ||
+              tokens[i - 1].type == '/') {
+              tokens[i].type = TK_NEG;
+          } else {
+              tokens[i].type = '-';
+          }
+      }
+  }
 }
 
 bool check_expr(int p, int q) { return true; }
