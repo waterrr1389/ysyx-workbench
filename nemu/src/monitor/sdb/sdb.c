@@ -13,6 +13,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
+#include "utils.h"
 #include <isa.h>
 #include <cpu/cpu.h>
 #include <readline/readline.h>
@@ -48,7 +49,8 @@ static int cmd_c(char *args) {
 }
 
 static int cmd_q(char *args) {
-  return -1;
+  set_nemu_state(NEMU_END, 0, NEMU_QUIT);
+  return 0;
 }
 
 static int cmd_help(char *args);
