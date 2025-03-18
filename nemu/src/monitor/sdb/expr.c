@@ -295,7 +295,7 @@ int test() {
       continue;
     }
 
-    // 找到表达式
+    // 获取表达式字符串
     pos = strchr(str, ' ');  
     if (pos) {
       exp = pos + 1;
