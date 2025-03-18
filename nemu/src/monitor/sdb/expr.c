@@ -23,28 +23,28 @@
 enum {
   TK_NOTYPE = 256,
   TK_EQ,
-  TK_DECIMAL
-
+  TK_DECIMAL,
+  TK_NEG,      //单目负号
   /* TODO: Add more token types */
-
 };
 
 static struct rule {
   const char *regex;
   int token_type;
 } rules[] = {
-
-    /* TODO: Add more rules.
-     * Pay attention to the precedence level of different rules.
-     */
-
+    /* 注意顺序：先匹配负号，再匹配减法 */
     {" +", TK_NOTYPE}, // spaces
     {"\\+", '+'},      // plus
     {"==", TK_EQ},     // equal
-    {"\\-", '-'},      // minus
+    // 匹配单目负号：当负号出现在表达式开始或左括号、加、减、乘、除后面时认为是负号
+    {"(?<=^|\\(|\\+|\\-|\\*|\\/)-", TK_NEG},
+    {"\\-", '-'},      // 二元减法运算符
     {"\\*", '*'},      // multiply
     {"\\/", '/'},      // division
-    {"\\(", '('},      {"\\)", ')'}, {"[0-9]+", TK_DECIMAL}};
+    {"\\(", '('}, 
+    {"\\)", ')'}, 
+    {"[0-9]+", TK_DECIMAL}
+};
 
 #define NR_REGEX ARRLEN(rules)
 
@@ -72,14 +72,14 @@ typedef struct token {
   char str[32];
 } Token;
 
-static Token tokens[256] __attribute__((used)) = {};
+static Token tokens[512] __attribute__((used)) = {};
 static int nr_token __attribute__((used)) = 0;
 
 static bool make_token(char *e) {
   int position = 0;
   int i;
   regmatch_t pmatch;
-
+  Token *token;
   nr_token = 0;
 
   while (e[position] != '\0') {
@@ -109,7 +109,7 @@ static bool make_token(char *e) {
         case ')':
         case TK_EQ:
         case TK_DECIMAL:
-          Token *token = tokens + nr_token;
+          token = tokens + nr_token;
           token->type = rules[i].token_type;
           nr_token++;
           // Assert(((ARRLEN(token->str)-1) >= substr_len), "%s\n", "String
@@ -148,7 +148,7 @@ word_t expr(char *e, bool *success) {
     return 0;
   }
 
-  //检查表达式合法性
+  // 检查表达式合法性
   if (check_expr(0, nr_token - 1))
     return eval(0, nr_token - 1);
   else
@@ -272,8 +272,17 @@ int test() {
 
   while (fgets(str, sizeof(str), fp) != NULL) {
     // 解析标准答案的值
-    if (sscanf(str, "%u %s", &val2, exp) != 2) {
+    if (sscanf(str, "%u", &val2) != 1) {
       printf("%d line sscanf() failed\n", row);
+      continue;
+    }
+
+    // 找到第一个 '\n'
+    char *pos = strchr(str, '\n');  
+    if (pos) {
+        *pos = '\0';  // 替换为 '\0'      
+    } else {
+      printf("%d line getexpr failed\n", row);
       continue;
     }
 
