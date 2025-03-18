@@ -28,6 +28,13 @@ enum {
   /* TODO: Add more token types */
 };
 
+typedef enum {
+  EVAL_SUCCESS = 0,    // 成功
+  EVAL_ERR_NULL,       // 空表达式错误
+  EVAL_ERR_INVALID,    // 非法节点错误
+  EVAL_ERR_ZERODIV     // 除零错误
+} EvalStatus;
+
 static struct rule {
   const char *regex;
   int token_type;
@@ -46,8 +53,9 @@ static struct rule {
 #define NR_REGEX ARRLEN(rules)
 
 static regex_t re[NR_REGEX] = {};
-uint32_t eval(int p, int q);
+EvalStatus eval(int p, int q, uint32_t *result);
 void categorize_minus();
+
 /* Rules are used for many times.
  * Therefore we compile them only once before any usage.
  */
@@ -55,8 +63,6 @@ void init_regex() {
   int i;
   char error_msg[128];
   int ret;
-
-  categorize_minus();
 
   for (i = 0; i < NR_REGEX; i++) {
     ret = regcomp(&re[i], rules[i].regex, REG_EXTENDED);
@@ -165,11 +171,28 @@ word_t expr(char *e, bool *success) {
     return 0;
   }
 
-  // 检查表达式合法性
-  if (check_expr(0, nr_token - 1))
-    return eval(0, nr_token - 1);
-  else
+  /* 根据上下文区分负号与二元减法 */
+  categorize_minus();
+
+  if (!check_expr(0, nr_token - 1)) {
+    *success = false;
     return 0;
+  }
+  
+  uint32_t result;
+  EvalStatus status = eval(0, nr_token - 1, &result);
+  if (status != EVAL_SUCCESS) {
+    *success = false;
+    // 可根据需要打印错误信息，例如：
+    if (status == EVAL_ERR_ZERODIV) {
+      printf("Error: Division by zero!\n");
+    } else if (status == EVAL_ERR_INVALID) {
+      printf("Error: Invalid expression!\n");
+    }
+    return 0;
+  }
+  *success = true;
+  return result;
 }
 
 int get_priority(int type) {
@@ -217,36 +240,37 @@ bool check_parentheses(int p, int q) {
   return true;
 }
 
-uint32_t eval(int p, int q) {
+EvalStatus eval(int p, int q, uint32_t *result) {
   if (p > q) {
-    /* Bad expression */
-    panic("%s\n", "Bad expression");
+    return EVAL_ERR_INVALID;
   } else if (p == q) {
-    /* Single token.
-     * For now this token should be a number.
-     * Return the value of the number.
-     */
+    /* 单个 token，应该为数字 */
     if (tokens[p].type == TK_DECIMAL) {
-      uint32_t val;
-      sscanf(tokens[p].str, "%u", &val);
-      return val;
+      sscanf(tokens[p].str, "%u", result);
+      return EVAL_SUCCESS;
     }
-    return 0;
+    return EVAL_ERR_INVALID;
+  } else if (tokens[p].type == TK_NEG) {
+    /* 处理单目负号 */
+    uint32_t tmp;
+    EvalStatus status = eval(p + 1, q, &tmp);
+    if (status != EVAL_SUCCESS)
+      return status;
+    *result = (uint32_t)(-((int)tmp));
+    return EVAL_SUCCESS;
   } else if (check_parentheses(p, q)) {
-    /* The expression is surrounded by a matched pair of parentheses.
-     * If that is the case, just throw away the parentheses.
-     */
-    return eval(p + 1, q - 1);
+    /* 如果表达式被一对括号包围，则去掉最外层括号 */
+    return eval(p + 1, q - 1, result);
   } else {
     int op = -1;
-    int min_priority = 3;
+    int min_priority = 4; // 初始值设置为比最高优先级还高
     int level = 0;
+    /* 找出最主要的运算符，即处于最外层且优先级最低的运算符 */
     for (int i = p; i <= q; i++) {
       if (tokens[i].type == '(')
         level++;
       if (tokens[i].type == ')')
         level--;
-
       if (level == 0) {
         int priority = get_priority(tokens[i].type);
         if (priority <= min_priority) {
@@ -255,24 +279,28 @@ uint32_t eval(int p, int q) {
         }
       }
     }
-
-    uint32_t val1 = eval(p, op - 1);
-    uint32_t val2 = eval(op + 1, q);
-    uint32_t op_type = tokens[op].type;
-
-    switch (op_type) {
-    case '+':
-      return val1 + val2;
-    case '-':
-      return val1 - val2;
-    case '*':
-      return val1 * val2;
-    case '/':
-      Assert(val2 == 0, "%s\n", "Zero Division");
-      return val1 / val2;
-    default:
-      panic("%s\n", "Unknown operator type");
+    if (op == -1)
+      return EVAL_ERR_INVALID;
+    uint32_t val1, val2;
+    EvalStatus status = eval(p, op - 1, &val1);
+    if (status != EVAL_SUCCESS)
+      return status;
+    status = eval(op + 1, q, &val2);
+    if (status != EVAL_SUCCESS)
+      return status;
+    switch (tokens[op].type) {
+      case '+': *result = val1 + val2; break;
+      case '-': *result = val1 - val2; break;
+      case '*': *result = val1 * val2; break;
+      case '/':
+        if (val2 == 0)
+          return EVAL_ERR_ZERODIV;
+        *result = val1 / val2;
+        break;
+      default:
+        return EVAL_ERR_INVALID;
     }
+    return EVAL_SUCCESS;
   }
 }
 
