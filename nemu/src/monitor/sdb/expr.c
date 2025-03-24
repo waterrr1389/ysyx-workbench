@@ -115,6 +115,8 @@ static bool make_token(char *e) {
         case ')':
         case TK_EQ:
         case TK_DECIMAL:
+        case TK_HEX:
+        case TK_REG:
           token = tokens + nr_token;
           token->type = rules[i].token_type;
           nr_token++;
