@@ -24,31 +24,31 @@ enum {
   TK_NOTYPE = 256,
   TK_EQ,
   TK_DECIMAL,
-  TK_NEG,      //单目负号
+  TK_NEG, // 单目负号
+  TK_HEX,
+  TK_REG,
+  TK_DEFERENCE, // 解引用
   /* TODO: Add more token types */
 };
 
 typedef enum {
-  EVAL_SUCCESS = 0,    // 成功
-  EVAL_ERR_NULL,       // 空表达式错误
-  EVAL_ERR_INVALID,    // 非法节点错误
-  EVAL_ERR_ZERODIV     // 除零错误
+  EVAL_SUCCESS = 0, // 成功
+  EVAL_ERR_NULL,    // 空表达式错误
+  EVAL_ERR_INVALID, // 非法节点错误
+  EVAL_ERR_ZERODIV  // 除零错误
 } EvalStatus;
 
 static struct rule {
   const char *regex;
   int token_type;
-} rules[] = {
-    {" +", TK_NOTYPE}, // spaces
-    {"\\+", '+'},      // plus
-    {"==", TK_EQ},     // equal
-    {"\\-", '-'},      // 二元减法运算符
-    {"\\*", '*'},      // multiply
-    {"\\/", '/'},      // division
-    {"\\(", '('}, 
-    {"\\)", ')'}, 
-    {"[0-9]+", TK_DECIMAL}
-};
+} rules[] = {{" +", TK_NOTYPE}, // spaces
+             {"\\+", '+'},      // plus
+             {"==", TK_EQ},     // equal
+             {"\\-", '-'},      // 二元减法运算符
+             {"\\*", '*'},      // multiply
+             {"\\/", '/'},      // division
+             {"\\(", '('},        {"\\)", ')'},          {"0x[0-9]+", TK_HEX},
+             {"$[0-9]+", TK_REG}, {"[0-9]+", TK_DECIMAL}};
 
 #define NR_REGEX ARRLEN(rules)
 
@@ -147,18 +147,27 @@ static bool make_token(char *e) {
 
 void categorize_minus() {
   for (int i = 0; i < nr_token; i++) {
-      if (tokens[i].type == '-') {
-          // 负号情况：
-          // 1. 这是第一个 token（表达式以 `-` 开头）
-          // 2. 负号前面是 `(`、`+`、`-`、`*`、`/`
-          if (i == 0 || tokens[i - 1].type == '(' || tokens[i - 1].type == '+' ||
-              tokens[i - 1].type == '-' || tokens[i - 1].type == '*' ||
-              tokens[i - 1].type == '/') {
-              tokens[i].type = TK_NEG;
-          } else {
-              tokens[i].type = '-';
-          }
+    if (tokens[i].type == '-') {
+      // 负号情况：
+      // 1. 这是第一个 token（表达式以 `-` 开头）
+      // 2. 负号前面是 `(`、`+`、`-`、`*`、`/`
+      if (i == 0 || tokens[i - 1].type == '(' || tokens[i - 1].type == '+' ||
+          tokens[i - 1].type == '-' || tokens[i - 1].type == '*' ||
+          tokens[i - 1].type == '/') {
+        tokens[i].type = TK_NEG;
       }
+    }
+  }
+}
+
+void categorize_dereference() {
+  for (int i = 0; i < nr_token; i++) {
+    if (tokens[i].type == '*' &&
+        (i == 0 || tokens[i - 1].type == '(' || tokens[i - 1].type == '+' ||
+         tokens[i - 1].type == '-' || tokens[i - 1].type == '*' ||
+         tokens[i - 1].type == '/')) {
+      tokens[i].type = TK_DEFERENCE;
+    }
   }
 }
 
@@ -173,12 +182,13 @@ word_t expr(char *e, bool *success) {
 
   /* 根据上下文区分负号与二元减法 */
   categorize_minus();
+  categorize_dereference();
 
   if (!check_expr(0, nr_token - 1)) {
     *success = false;
     return 0;
   }
-  
+
   uint32_t result;
   EvalStatus status = eval(0, nr_token - 1, &result);
   if (status != EVAL_SUCCESS) {
@@ -244,8 +254,14 @@ EvalStatus eval(int p, int q, uint32_t *result) {
   if (p > q) {
     return EVAL_ERR_INVALID;
   } else if (p == q) {
-    /* 单个 token，应该为数字 */
-    if (tokens[p].type == TK_DECIMAL) {
+    /* 单个token,为数字或寄存器 */
+    if (tokens[p].type == TK_HEX) {
+      sscanf(tokens[p].str, "%x", result);
+      return EVAL_SUCCESS;
+    } else if (tokens[p].type == TK_REG) {
+      *result = isa_reg_str2val(tokens[p].str + 1, NULL);
+      return EVAL_SUCCESS;
+    } else if (tokens[p].type == TK_DECIMAL) {
       sscanf(tokens[p].str, "%u", result);
       return EVAL_SUCCESS;
     }
@@ -289,16 +305,22 @@ EvalStatus eval(int p, int q, uint32_t *result) {
     if (status != EVAL_SUCCESS)
       return status;
     switch (tokens[op].type) {
-      case '+': *result = val1 + val2; break;
-      case '-': *result = val1 - val2; break;
-      case '*': *result = val1 * val2; break;
-      case '/':
-        if (val2 == 0)
-          return EVAL_ERR_ZERODIV;
-        *result = val1 / val2;
-        break;
-      default:
-        return EVAL_ERR_INVALID;
+    case '+':
+      *result = val1 + val2;
+      break;
+    case '-':
+      *result = val1 - val2;
+      break;
+    case '*':
+      *result = val1 * val2;
+      break;
+    case '/':
+      if (val2 == 0)
+        return EVAL_ERR_ZERODIV;
+      *result = val1 / val2;
+      break;
+    default:
+      return EVAL_ERR_INVALID;
     }
     return EVAL_SUCCESS;
   }
@@ -310,8 +332,8 @@ int test() {
   Assert(fp, "%s\n", "Failed to open file");
 
   char str[2048] = {0};
-  char* exp = 0;
-  char* pos = 0;
+  char *exp = 0;
+  char *pos = 0;
   int row = 1;
   word_t val1, val2;
   bool success = true;
@@ -324,10 +346,10 @@ int test() {
     }
 
     // 获取表达式字符串
-    pos = strchr(str, ' ');  
+    pos = strchr(str, ' ');
     if (pos) {
       exp = pos + 1;
-      char* newline = strchr(exp, '\n');
+      char *newline = strchr(exp, '\n');
       if (newline) {
         *newline = '\0';
       }
