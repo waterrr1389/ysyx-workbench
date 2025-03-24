@@ -84,6 +84,9 @@ static int cmd_info_w(char* args) {
 } 
 
 static int cmd_expr(char* args) {
+  if (args == NULL) {
+    return 0;
+  }
   bool success = true;
   uint32_t result = expr(args, &success);
   printf("%u\n", result);
@@ -136,7 +139,7 @@ static struct {
   { "q", "Exit NEMU", cmd_q },
   { "si",   "Execute N instructions then pause (default N=1)", cmd_si },
   { "info", "Print register status or watchpoint information (info r|w)", cmd_info },
-  {"info_w", "Print watchpoint information", cmd_info_w},
+  {"info w", "Print watchpoint information", cmd_info_w},
   { "x",    "Scan memory: x N EXPR - Display N*4 bytes from address EXPR", cmd_x },
   { "p",    "Evaluate expression: p EXPR - Calculate value of EXPR", cmd_expr },
   { "w",    "Set watchpoint: w EXPR - Pause when EXPR value changes", cmd_w },
@@ -193,7 +196,6 @@ void sdb_mainloop() {
     char *args = cmd + strlen(cmd) + 1;
     if (args >= str_end) {
       args = NULL;
-      continue;
     }
 
 #ifdef CONFIG_DEVICE
