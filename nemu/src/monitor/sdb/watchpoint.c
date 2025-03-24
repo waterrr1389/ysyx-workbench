@@ -69,3 +69,10 @@ WP* get_wp(int NO) {
   }
   return NULL;
 }
+
+void watchpoint_display() {
+  WP *p;
+  for (p = head; p != NULL; p = p->next) {
+    printf("Watchpoint %d: %s = %u\n", p->NO, p->str, p->value);
+  }
+}
