@@ -14,11 +14,16 @@
 ***************************************************************************************/
 
 #include "utils.h"
+#include "watchpoint.h"
+#include "sdb.h"
 #include <isa.h>
 #include <cpu/cpu.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <memory/paddr.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 static int is_batch_mode = false;
 
@@ -68,19 +73,15 @@ static int cmd_si(char* args) {
 
 static int cmd_info(char* args) {
   isa_reg_display();
+  
   return 0;
 }
 
 static int cmd_expr(char* args) {
-  int val;
-  if (args == NULL) { 
-    val = 0;
-  } else { 
-    args[strlen(args)+1] = '\0';
-    sscanf(args, "%x", &val);
-    printf("0x%08x\n", val);
-  }
-  return val;
+  bool* success = false;
+  uint32_t result = expr(args, success);
+  printf("%u\n", result);
+  return 0;
 }
 
 static int cmd_x(char* args) {
@@ -105,10 +106,17 @@ static int cmd_x(char* args) {
 }
 
 static int cmd_w(char* args) {
+  WP* wp = new_wp();
+  bool* success = false;
+  strcpy(wp->str, args);
+  wp->value = expr(args, success);
   return 0;
 }
 
 static int cmd_d(char* args) {
+  int index;
+  sscanf("%d", args, &index);
+  free(get_wp(index));
   return 0;
 }
 
@@ -125,7 +133,7 @@ static struct {
   { "x",    "Scan memory: x N EXPR - Display N*4 bytes from address EXPR", cmd_x },
   { "p",    "Evaluate expression: p EXPR - Calculate value of EXPR", cmd_expr },
   { "w",    "Set watchpoint: w EXPR - Pause when EXPR value changes", cmd_w },
-  { "d",    "Delete watchpoint: d N - Remove watchpoint number N", cmd_d },
+  { "d",    "Delete watchpoint: d N - Remove watchpoint number N", cmd_d }
   /* TODO: Add more commands */
 
 };
