@@ -120,8 +120,6 @@ static bool make_token(char *e) {
           token = tokens + nr_token;
           token->type = rules[i].token_type;
           nr_token++;
-          // Assert(((ARRLEN(token->str)-1) >= substr_len), "%s\n", "String
-          // Buffer Overflow.");
           if (ARRLEN(token->str) < substr_len)
             return false;
           strncpy(token->str, substr_start, substr_len);
