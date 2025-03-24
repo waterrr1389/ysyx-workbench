@@ -77,9 +77,18 @@ static int cmd_info(char* args) {
   return 0;
 }
 
+static int cmd_info_w(char* args) {
+  watchpoint_display();
+  
+  return 0;
+} 
+
 static int cmd_expr(char* args) {
-  bool* success = false;
-  uint32_t result = expr(args, success);
+  if (args == NULL) {
+    return 0;
+  }
+  bool success = true;
+  uint32_t result = expr(args, &success);
   printf("%u\n", result);
   return 0;
 }
@@ -107,9 +116,9 @@ static int cmd_x(char* args) {
 
 static int cmd_w(char* args) {
   WP* wp = new_wp();
-  bool* success = false;
+  bool success = true;
   strcpy(wp->str, args);
-  wp->value = expr(args, success);
+  wp->value = expr(args, &success);
   return 0;
 }
 
@@ -130,6 +139,7 @@ static struct {
   { "q", "Exit NEMU", cmd_q },
   { "si",   "Execute N instructions then pause (default N=1)", cmd_si },
   { "info", "Print register status or watchpoint information (info r|w)", cmd_info },
+  {"info w", "Print watchpoint information", cmd_info_w},
   { "x",    "Scan memory: x N EXPR - Display N*4 bytes from address EXPR", cmd_x },
   { "p",    "Evaluate expression: p EXPR - Calculate value of EXPR", cmd_expr },
   { "w",    "Set watchpoint: w EXPR - Pause when EXPR value changes", cmd_w },

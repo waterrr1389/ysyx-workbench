@@ -47,7 +47,7 @@ static struct rule {
              {"\\-", '-'},      // 二元减法运算符
              {"\\*", '*'},      // multiply
              {"\\/", '/'},      // division
-             {"\\(", '('},        {"\\)", ')'},          {"0x[0-9]+", TK_HEX},
+             {"\\(", '('},          {"\\)", ')'},          {"0x[0-9]+", TK_HEX},
              {"\\$[0-9]+", TK_REG}, {"[0-9]+", TK_DECIMAL}};
 
 #define NR_REGEX ARRLEN(rules)
@@ -115,11 +115,11 @@ static bool make_token(char *e) {
         case ')':
         case TK_EQ:
         case TK_DECIMAL:
+        case TK_HEX:
+        case TK_REG:
           token = tokens + nr_token;
           token->type = rules[i].token_type;
           nr_token++;
-          // Assert(((ARRLEN(token->str)-1) >= substr_len), "%s\n", "String
-          // Buffer Overflow.");
           if (ARRLEN(token->str) < substr_len)
             return false;
           strncpy(token->str, substr_start, substr_len);
