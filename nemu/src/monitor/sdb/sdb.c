@@ -193,6 +193,7 @@ void sdb_mainloop() {
     char *args = cmd + strlen(cmd) + 1;
     if (args >= str_end) {
       args = NULL;
+      continue;
     }
 
 #ifdef CONFIG_DEVICE
