@@ -47,7 +47,7 @@ static struct rule {
              {"\\-", '-'},      // 二元减法运算符
              {"\\*", '*'},      // multiply
              {"\\/", '/'},      // division
-             {"\\(", '('},        {"\\)", ')'},          {"0x[0-9]+", TK_HEX},
+             {"\\(", '('},          {"\\)", ')'},          {"0x[0-9]+", TK_HEX},
              {"\\$[0-9]+", TK_REG}, {"[0-9]+", TK_DECIMAL}};
 
 #define NR_REGEX ARRLEN(rules)
