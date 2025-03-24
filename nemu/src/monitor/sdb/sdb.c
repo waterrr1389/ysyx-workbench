@@ -78,8 +78,8 @@ static int cmd_info(char* args) {
 }
 
 static int cmd_expr(char* args) {
-  bool* success = false;
-  uint32_t result = expr(args, success);
+  bool success = true;
+  uint32_t result = expr(args, &success);
   printf("%u\n", result);
   return 0;
 }
@@ -107,9 +107,9 @@ static int cmd_x(char* args) {
 
 static int cmd_w(char* args) {
   WP* wp = new_wp();
-  bool* success = false;
+  bool success = true;
   strcpy(wp->str, args);
-  wp->value = expr(args, success);
+  wp->value = expr(args, &success);
   return 0;
 }
 
