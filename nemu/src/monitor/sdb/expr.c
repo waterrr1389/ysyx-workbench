@@ -19,6 +19,7 @@
  * Type 'man regex' for more information about POSIX regex functions.
  */
 #include <regex.h>
+void set_nemu_state(int state, vaddr_t pc, int halt_ret);
 
 enum {
   TK_NOTYPE = 256,
@@ -378,5 +379,6 @@ int test() {
 
   fclose(fp);
   
+  set_nemu_state(NEMU_QUIT, 0, 0);
   return 0;
 }

@@ -19,7 +19,6 @@ void init_monitor(int, char *[]);
 void am_init_monitor();
 void engine_start();
 int is_exit_status_bad();
-void set_nemu_state(int state, vaddr_t pc, int halt_ret);
 int test();
 
 int main(int argc, char *argv[]) {
@@ -30,10 +29,9 @@ int main(int argc, char *argv[]) {
   init_monitor(argc, argv);
 #endif
 
-  test();
+  //test();
   /* Start engine. */
-  //engine_start();
-  set_nemu_state(NEMU_QUIT, 0, 0);
-  
+  engine_start();
+
   return is_exit_status_bad();
 }
