@@ -48,8 +48,10 @@ static struct rule {
              {"\\-", '-'},      // 二元减法运算符
              {"\\*", '*'},      // multiply
              {"\\/", '/'},      // division
-             {"\\(", '('},          {"\\)", ')'},          {"0x[0-9]+", TK_HEX},
-             {"\\$[0-9]+", TK_REG}, {"[0-9]+", TK_DECIMAL}};
+             {"\\(", '('},          {"\\)", ')'},
+             {"\\%", '%'},       {"0x[0-9]+", TK_HEX},
+             {"\\$[0-9]+", TK_REG}, {"[0-9]+u", TK_DECIMAL},
+             {"[0-9]+", TK_DECIMAL}};
 
 #define NR_REGEX ARRLEN(rules)
 
@@ -112,6 +114,7 @@ static bool make_token(char *e) {
         case '-':
         case '*':
         case '/':
+        case '%':
         case '(':
         case ')':
         case TK_EQ:
@@ -213,6 +216,7 @@ int get_priority(int type) {
     return 1;
   case '*':
   case '/':
+  case '%':
     return 2;
   default:
     return 3;
@@ -320,6 +324,9 @@ EvalStatus eval(int p, int q, uint32_t *result) {
         return EVAL_ERR_ZERODIV;
       *result = val1 / val2;
       break;
+    case '%':
+      *result = val1 % val2;
+      break;
     default:
       return EVAL_ERR_INVALID;
     }
@@ -370,7 +377,7 @@ int test() {
     if (val1 == val2) {
       printf("%d line is correct\n", row);
     } else {
-      printf("%d line is incorrect\n", row);
+      printf("%d line is wrong\n", row);
     }
     row++;
 
