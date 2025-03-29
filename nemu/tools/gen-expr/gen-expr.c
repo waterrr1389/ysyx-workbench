@@ -54,7 +54,7 @@ static void gen_num() {
 
 static void gen_rand_op() {
   uint32_t n = choose(5); // 0-4，增加取模运算符
-  char op[5] = {'+', '-', '*', '/'};
+  char op[5] = {'+', '-', '*', '/', '%'};
   char op_ch = op[n];
   char op_str[2] = {op_ch, '\0'};
   strcat(buf, op_str);
