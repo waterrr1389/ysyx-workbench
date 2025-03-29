@@ -49,7 +49,7 @@ static struct rule {
              {"\\*", '*'},      // multiply
              {"\\/", '/'},      // division
              {"\\(", '('},          {"\\)", ')'},          {"0x[0-9]+", TK_HEX},
-             {"\\$[0-9]+", TK_REG}, {"[0-9]+", TK_DECIMAL}};
+             {"\\$[0-9]+", TK_REG}, {"[0-9]+", TK_DECIMAL}, {"[0-9]+u", TK_DECIMAL}};
 
 #define NR_REGEX ARRLEN(rules)
 
@@ -370,7 +370,7 @@ int test() {
     if (val1 == val2) {
       printf("%d line is correct\n", row);
     } else {
-      printf("%d line is incorrect\n", row);
+      printf("%d line is wrong\n", row);
     }
     row++;
 
