@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
   init_monitor(argc, argv);
 #endif
 
-  //test();
+  test();
   /* Start engine. */
   engine_start();
 
