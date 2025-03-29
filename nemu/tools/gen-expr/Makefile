@@ -23,4 +23,4 @@ gen: $(SRCS)
 .phony: run
 
 run:
-	./build/gen-expr 100 > input
+	./build/gen-expr 10 > input
