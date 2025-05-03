@@ -49,7 +49,7 @@ static struct rule {
              {"\\*", '*'},      // multiply
              {"\\/", '/'},      // division
              {"\\(", '('},          {"\\)", ')'},
-             {"\\%", '%'},       {"0x[0-9]+", TK_HEX},
+             {"\\%", '%'},       {"^0[xX][0-9A-Fa-f]+", TK_HEX},
              {"\\$[0-9]+", TK_REG}, {"[0-9]+u", TK_DECIMAL},
              {"[0-9]+", TK_DECIMAL}};
 
