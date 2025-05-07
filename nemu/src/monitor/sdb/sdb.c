@@ -65,7 +65,7 @@ static int cmd_si(char* args) {
   if (args == NULL) {
     n = 1;
   } else {
-    n = args[0];
+    sscanf(args, "%d", &n);
   }
   cpu_exec(n);
   return 0;
