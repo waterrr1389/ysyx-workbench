@@ -14,11 +14,16 @@
 ***************************************************************************************/
 
 #include "watchpoint.h"
+#include "sdb.h"
 
 #define NR_WP 32
 
 static WP wp_pool[NR_WP] = {};
 static WP *head = NULL, *free_ = NULL;
+
+WP* get_watchpoint_head() {
+  return head;
+}
 
 void init_wp_pool() {
   int i;
@@ -74,5 +79,26 @@ void watchpoint_display() {
   WP *p;
   for (p = head; p != NULL; p = p->next) {
     printf("Watchpoint %d: %s = %u\n", p->NO, p->str, p->value);
+  }
+}
+
+void check_watchpoints() {
+  WP *wp = get_watchpoint_head();
+  while (wp != NULL) {
+    uint32_t origin_val, curr_val;
+    bool success;
+    origin_val = wp->value;
+    curr_val = expr(wp->str, &success);
+    if (!success) {
+      printf("Error evaluating watchpoint expression '%s'\n", wp->str);
+    } else {
+      if (origin_val != curr_val) {
+        printf("Watchpoint %d: %s changed from %u to %u\n",
+                   wp->NO, wp->str, origin_val, curr_val);
+        nemu_state.state = NEMU_STOP;
+        wp->value = curr_val;
+      }
+    }
+    wp = wp->next;
   }
 }

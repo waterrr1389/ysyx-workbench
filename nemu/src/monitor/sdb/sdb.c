@@ -71,7 +71,7 @@ static int cmd_si(char* args) {
   return 0;
 }
 
-static int cmd_info(char* args) {
+static int cmd_info_r(char* args) {
   isa_reg_display();
   
   return 0;
@@ -82,6 +82,15 @@ static int cmd_info_w(char* args) {
   
   return 0;
 } 
+
+static int cmd_info(char* args) {
+  if (args[0] == 'r') 
+    cmd_info_r(args);
+  else if (args[0] == 'w')
+    cmd_info_w(args);
+
+  return 0;
+}
 
 static int cmd_expr(char* args) {
   if (args == NULL) {
@@ -139,7 +148,6 @@ static struct {
   { "q", "Exit NEMU", cmd_q },
   { "si",   "Execute N instructions then pause (default N=1)", cmd_si },
   { "info", "Print register status or watchpoint information (info r|w)", cmd_info },
-  {"info w", "Print watchpoint information", cmd_info_w},
   { "x",    "Scan memory: x N EXPR - Display N*4 bytes from address EXPR", cmd_x },
   { "p",    "Evaluate expression: p EXPR - Calculate value of EXPR", cmd_expr },
   { "w",    "Set watchpoint: w EXPR - Pause when EXPR value changes", cmd_w },

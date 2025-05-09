@@ -197,7 +197,6 @@ word_t expr(char *e, bool *success) {
   EvalStatus status = eval(0, nr_token - 1, &result);
   if (status != EVAL_SUCCESS) {
     *success = false;
-    // 可根据需要打印错误信息，例如：
     if (status == EVAL_ERR_ZERODIV) {
       printf("Error: Division by zero!\n");
     } else if (status == EVAL_ERR_INVALID) {
@@ -259,7 +258,7 @@ EvalStatus eval(int p, int q, uint32_t *result) {
   if (p > q) {
     return EVAL_ERR_INVALID;
   } else if (p == q) {
-    /* 单个token,为数字或寄存器 */
+    // 单个token,为数字或寄存器
     if (tokens[p].type == TK_HEX) {
       sscanf(tokens[p].str, "%x", result);
       return EVAL_SUCCESS;

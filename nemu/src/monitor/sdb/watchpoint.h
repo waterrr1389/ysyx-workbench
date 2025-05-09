@@ -16,5 +16,7 @@ WP* new_wp();
 void free_wp(WP *wp);
 WP* get_wp(int NO);
 void watchpoint_display();
+WP* get_watchpoint_head();
+void check_watchpoints();
 
 #endif
