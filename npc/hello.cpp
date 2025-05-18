@@ -3,7 +3,8 @@
 #include <assert.h>
 #include "Vtop.h"
 #include "verilated.h"
-#include "verilated_vcd_c.h"
+// #include "verilated_vcd_c.h"
+#include "verilated_fst_c.h"
 
 int main(int argc, char** argv) {
 	VerilatedContext* contextp = new VerilatedContext;
@@ -11,7 +12,8 @@ int main(int argc, char** argv) {
 	Vtop* top = new Vtop{contextp};
 
 	Verilated::traceEverOn(true);
-	VerilatedVcdC* tfp = new VerilatedVcdC;
+	//VerilatedVcdC* tfp = new VerilatedVcdC;
+	VerilatedFstC* tfp = new VerilatedFstC;
 	top->trace(tfp, 99); 
 	tfp->open("waveform.vcd");
 

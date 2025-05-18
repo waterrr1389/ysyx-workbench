@@ -1,4 +1,4 @@
-V_FLAGS = --trace --cc --exe --build -j -Wall
+V_FLAGS = --trace-fst -cc --exe --build -j -Wall
 all:
 	@echo "Write this Makefile by your self."
 
