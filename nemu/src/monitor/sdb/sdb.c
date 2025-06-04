@@ -107,18 +107,19 @@ static int cmd_x(char* args) {
     return 1; 
   } else {
     int n; 
-    uint32_t expr;
+    bool success = true;
 
     char* arg1 = strtok(args, " ");
     char* arg2 = strtok(NULL, " ");
     sscanf(arg1, "%d", &n);
-    expr = (uint32_t)cmd_expr(arg2);
-    uint8_t* host_addr = guest_to_host(expr);
+    uint64_t addr = expr(arg2, &success);
+  uint8_t* host_addr = guest_to_host(addr);
 
-    for (int i = 1; i <= 4*n; i++) {
-      printf("%02x", host_addr[i-1]);
-      if (i % 4 == 0) printf("\n");
+    for (int i = 0; i < 4*n; i++) {
+      printf("%02x ", host_addr[i]);
+      if (i % 4 == 3) printf("\n");
     }
+    printf("\n");
   }
   return 0;
 }
