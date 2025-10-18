@@ -282,9 +282,10 @@ bool check_parentheses(int p, int q) {
 
 static uint32_t deRef(word_t addr) {
   uint8_t* host_addr = guest_to_host(addr);
-  uint32_t val;
+  uint32_t val = 0;
   for (int i = 0; i < 3; i++) {
-    val = (val << i*8) + *host_addr++;
+    val += (*host_addr << i*8);
+    host_addr++;
   }
   return val;
 }

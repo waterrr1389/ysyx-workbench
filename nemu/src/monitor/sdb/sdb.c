@@ -76,7 +76,6 @@ static int cmd_si(char* args) {
 
 static int cmd_info_r(char* args) {
   isa_reg_display();
-  
   return 0;
 }
 
@@ -101,7 +100,7 @@ static int cmd_expr(char* args) {
   }
   bool success = true;
   uint32_t result = expr(args, &success);
-  printf("%u\n", result);
+  printf("%08x\n", result);
   return 0;
 }
 
