@@ -96,13 +96,33 @@ module top(
         8'h1d, 8'h77 //s
     }));
 
+    reg key_is_pressed;
 
-    wire[7:0] d1, d2;
+    always @(posedge clk) begin
+        if (reset) begin
+            key_is_pressed <= 1'b0;
+        // 当检测到按键释放时，清除标志
+        end else if (release_detected) begin
+            key_is_pressed <= 1'b0;
+        // 当接收到新的数据，且它不是释放码的前缀F0时，认为是按键按下
+        end else if (state == S1 && data != 8'hF0) begin
+            key_is_pressed <= 1'b1;
+        end
+    end
 
-    hex7seg seg0_inst(.hex_in(d1[3:0]), .seg_out(seg0));
-    hex7seg seg1_inst(.hex_in(d1[7:4]), .seg_out(seg1));
-    hex7seg seg2_inst(.hex_in(d2[3:0]), .seg_out(seg2));
-    hex7seg seg3_inst(.hex_in(d2[7:4]), .seg_out(seg3));
+    wire [7:0] d1, d2;
+    assign d1 = buffer[0]; // 显示ASCII码的高低位
+    assign d2 = ascii; // 另外两个数码管显示00
+
+    // 3. 根据 key_is_pressed 状态来决定数码管的输入
+    //    当 key_is_pressed 为1时，显示正常数据 (d1, d2)
+    //    当 key_is_pressed 为0时 (按键松开), 输入 4'hF 来熄灭数码管
+    //    注意：假设你的 hex7seg 模块在输入为 4'hF 时会熄灭
+    hex7seg seg0_inst(.hex_in(key_is_pressed ? d1[3:0]   : 4'hF), .seg_out(seg0));
+    hex7seg seg1_inst(.hex_in(key_is_pressed ? d1[7:4]   : 4'hF), .seg_out(seg1));
+    hex7seg seg2_inst(.hex_in(key_is_pressed ? d2[3:0]   : 4'hF), .seg_out(seg2));
+    hex7seg seg3_inst(.hex_in(key_is_pressed ? d2[7:4]   : 4'hF), .seg_out(seg3));
+
     hex7seg seg4_inst(.hex_in(key_press_count[3:0]), .seg_out(seg4));
     hex7seg seg5_inst(.hex_in(key_press_count[7:4]), .seg_out(seg5));
 

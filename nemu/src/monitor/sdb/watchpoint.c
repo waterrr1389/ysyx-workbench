@@ -15,6 +15,7 @@
 
 #include "watchpoint.h"
 #include "sdb.h"
+#include "utils.h"
 
 #define NR_WP 32
 
@@ -100,7 +101,7 @@ void check_watchpoints() {
       if (origin_val != curr_val) {
         printf("Watchpoint %d: %s changed from %u to %u\n",
                    wp->NO, wp->str, origin_val, curr_val);
-        nemu_state.state = NEMU_STOP;
+        if (nemu_state.state != NEMU_END) nemu_state.state = NEMU_STOP;
         wp->value = curr_val;
       }
     }

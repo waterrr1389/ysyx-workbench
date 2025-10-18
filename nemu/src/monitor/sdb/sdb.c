@@ -13,6 +13,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
+#include "common.h"
 #include "utils.h"
 #include "watchpoint.h"
 #include "sdb.h"
@@ -136,6 +137,10 @@ static int cmd_x(char* args) {
 }
 
 static int cmd_w(char* args) {
+  if (args == NULL) {
+    printf("Please input expr for watchpoints\n");
+    return 0;
+  }
   WP* wp = new_wp();
   bool success = true;
   strcpy(wp->str, args);

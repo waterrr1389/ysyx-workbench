@@ -21,9 +21,10 @@
 #include <string.h>
 
 // this should be enough
-#define MAX_DEPTH 5
-static char buf[65536] = {};
-static char code_buf[65536 + 128] = {}; // a little larger than `buf`
+#define MAX_DEPTH 10
+#define BUFFER_SIZE 500000
+static char buf[BUFFER_SIZE] = {};
+static char code_buf[BUFFER_SIZE + 8192] = {}; // a little larger than `buf`
 static char *code_format =
 "#include <stdio.h>\n"
 "int main() { "
@@ -39,7 +40,7 @@ static uint32_t choose(uint32_t n) {
 static void gen_space() {
   // 改进空格生成逻辑，更清晰且有更好的随机性
   int num = choose(4); // 0-3
-  for (int i = 0; i < num && strlen(buf) < 60000; i++) {
+  for (int i = 0; i < num && strlen(buf) < BUFFER_SIZE; i++) {
     strcat(buf, " ");
   }
 }
@@ -47,7 +48,8 @@ static void gen_space() {
 static void gen_num() {
   char num[16];
   // 确保生成的数字被视为无符号整数
-  sprintf(num, "%uu", (uint32_t)rand()%1000 + 1);  // 添加'u'后缀表示无符号整数
+  // +1保证生成的数字不包含0
+  sprintf(num, "%uu", (uint32_t)rand()%65536 + 1);  // 添加'u'后缀表示无符号整数
   strcat(buf, num);
   gen_space();
 }
@@ -61,25 +63,6 @@ static void gen_rand_op() {
   gen_space();
 }
 
-// 检查表达式是否可能导致除零错误
-static int check_div_mod_by_zero(char *expr) {
-  // 简单检查是否有除零或模零的情况
-  char *p = expr;
-  while (*p) {
-    // 检查是否有除以0或模0的情况
-    // 注意需要考虑0u这种无符号表示
-    if ((*p == '/' || *p == '%') && 
-        ((*(p+1) == '0' && (*(p+2) == 'u' || *(p+2) == 'U')) || 
-         (*(p+1) == '0' && 
-          (*(p+2) == '\0' || *(p+2) == ' ' || *(p+2) == ')' || 
-           *(p+2) == '+' || *(p+2) == '-' || *(p+2) == '*' || 
-           *(p+2) == '/' || *(p+2) == '%')))) {
-      return 1; // 可能有除零或模零
-    }
-    p++;
-  }
-  return 0; // 没有检测到除零或模零
-}
 
 static void gen(char c) {
   char str[2] = {c, '\0'};
@@ -88,60 +71,45 @@ static void gen(char c) {
 }
 
 static void gen_rand_expr(uint32_t depth) {
-  // 增加表达式长度检查，避免生成过长表达式
-  if (depth <= 0 || strlen(buf) > 60000) {
-    gen_num();
-    return;
-  }
-  else {
-    // 检查当前表达式长度，如果接近限制则直接生成数字
-    if (strlen(buf) > 55000) {
-      gen_num();
-      return;
-    }
-    
     switch (choose(3)) {
       case 0: gen_num(); break;
       case 1: gen('('); gen_rand_expr(depth-1); gen(')'); break;
       default: gen_rand_expr(depth-1); gen_rand_op(); gen_rand_expr(depth-1); break;
     }
-  }
 }
 
-void initRamdom() {
+void initRamdon() {
   int seed = time(0);
   srand(seed);
 }
-int main(int argc, char *argv[]) {
-  initRamdom();
 
-  int loop = 1;
+int main(int argc, char *argv[]) {
+  initRamdon();
+
+  int numOfExpr = 1;
   if (argc > 1) {
-    sscanf(argv[1], "%d", &loop);
+    sscanf(argv[1], "%d", &numOfExpr);
   }
 
   int i;
-  for (i = 0; i < loop; i ++) {
+  for (i = 0; i < numOfExpr; i++) {
     buf[0] = '\0';
     gen_rand_expr(MAX_DEPTH);
 
-    // 检查是否有除零或模零的情况
-    if (check_div_mod_by_zero(buf)) {
-      i--; // 重新生成表达式
-      continue;
-    }
-
     //替换code_format中的%s
     sprintf(code_buf, code_format, buf);
-
 
     FILE *fp = fopen("/tmp/.code.c", "w");
     assert(fp != NULL);
     fputs(code_buf, fp);
     fclose(fp);
 
-    int ret = system("gcc /tmp/.code.c -o /tmp/.expr");
-    if (ret != 0) continue;
+    //将处零警告转换为错误,通过检查返回值
+    int ret = system("gcc -Wall -Werror /tmp/.code.c -o /tmp/.expr");
+    if (ret != 0) { 
+      i--;
+      continue;
+    }
 
     fp = popen("/tmp/.expr", "r");
     assert(fp != NULL);

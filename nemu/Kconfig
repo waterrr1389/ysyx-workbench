@@ -101,6 +101,10 @@ config CC_O3
   bool "O3"
 endchoice
 
+config CC_EXPR 
+  bool "expr-test"
+  default n
+
 config CC_OPT
   string
   default "-O0" if CC_O0

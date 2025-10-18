@@ -29,9 +29,12 @@ int main(int argc, char *argv[]) {
   init_monitor(argc, argv);
 #endif
 
-  //test();
+#ifdef CONFIG_CC_EXPR
+  test();
+#else  
   /* Start engine. */
   engine_start();
+#endif
 
   return is_exit_status_bad();
 }

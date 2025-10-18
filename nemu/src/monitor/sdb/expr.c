@@ -50,7 +50,7 @@ static struct rule {
              {"\\/", '/'},      // division
              {"\\(", '('},          {"\\)", ')'},
              {"%", '%'},       {"^0[xX][0-9A-Fa-f]+", TK_HEX},
-             {"\\$((ra)|(sp)|(gp)|(tp)|(t0)|(t1)|(t2)|(s0)|(s1)|(a0)|(a1)|(a2)|(a3)|(a4)|(a5)|(a6)|(a7)|(s2)|(s3)|(s4)|(s5)|(s6)|(s7)|(s8)|(s9)|(s10)|(s11)|(t3)|(t4)|(t5)|(t6)|(0))\\b", TK_REG},
+             {"\\$((ra)|(sp)|(gp)|(tp)|(t0)|(t1)|(t2)|(s0)|(s1)|(a0)|(a1)|(a2)|(a3)|(a4)|(a5)|(a6)|(a7)|(s2)|(s3)|(s4)|(s5)|(s6)|(s7)|(s8)|(s9)|(s10)|(s11)|(t3)|(t4)|(t5)|(t6)|(pc)|(0))\\b", TK_REG},
               {"[0-9]+u", TK_DECIMAL},
              {"[0-9]+", TK_DECIMAL}};
 
@@ -270,7 +270,7 @@ EvalStatus eval(int p, int q, uint32_t *result) {
       sscanf(tokens[p].str, "%x", result);
       return EVAL_SUCCESS;
     } else if (tokens[p].type == TK_REG) {
-      *result = isa_reg_str2val(tokens[p].str + 1, NULL);
+      *result = isa_reg_str2val(tokens[p].str, NULL);
       return EVAL_SUCCESS;
     } else if (tokens[p].type == TK_DECIMAL) {
       sscanf(tokens[p].str, "%u", result);
@@ -354,7 +354,7 @@ int test() {
   Assert(fp, "%s\n", "Failed to open file");
 
   int correctNum = 0;
-  char str[2048] = {0};
+  char str[4096] = {0};
   char *exp = 0;
   char *pos = 0;
   int row = 1;
@@ -393,11 +393,11 @@ int test() {
       //printf("%d line is correct\n", row);
       correctNum++;
     } else {
-      printf("%d line is wrong\n", row);
+      printf("Line%d is wrong: val = %d ref = %d\n", row, val1, val2);
     }
     row++;
 
-    memset(str, 0, 2048);
+    memset(str, 0, 4096);
   }
   printf("Correct number: %d\n", correctNum);
   fclose(fp);
