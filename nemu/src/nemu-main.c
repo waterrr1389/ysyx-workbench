@@ -31,10 +31,9 @@ int main(int argc, char *argv[]) {
 
 #ifdef CONFIG_CC_EXPR
   test();
-#else  
+#endif  
   /* Start engine. */
   engine_start();
-#endif
 
   return is_exit_status_bad();
 }

@@ -19,9 +19,9 @@ INPUT = input
 include $(NEMU_HOME)/scripts/build.mk
 
 gen: $(SRCS)
-	gcc -o $(NAME) $(SRCS)
+	gcc -O3 -o $(NAME) $(SRCS)
 
 .phony: run
 
 run: gen
-	./build/gen-expr 100 > $(INPUT) 
+	./build/gen-expr 200 > $(INPUT) 

@@ -56,6 +56,8 @@ static struct rule {
 } rules[] = {{" +", TK_NOTYPE},
              {"\\+", TK_PLUS},
              {"==", TK_EQ},
+             {"<=", TK_LE},
+             {"!=", TK_NE},
              {"\\-", TK_MINUS},
              {"\\*", TK_MUL},
              {"\\/", TK_DIV},
@@ -63,8 +65,6 @@ static struct rule {
              {"\\)", TK_RP},
              {"%", TK_MOD},
              {"^0[xX][0-9A-Fa-f]+", TK_HEX},
-             {"<=", TK_LE},
-             {"!=", TK_NE},
              {"&&", TK_AND},
              {"\\$((ra)|(sp)|(gp)|(tp)|(t0)|(t1)|(t2)|(s0)|(s1)|(a0)|(a1)|(a2)|"
               "(a3)|(a4)|(a5)|(a6)|(a7)|(s2)|(s3)|(s4)|(s5)|(s6)|(s7)|(s8)|(s9)"
@@ -142,6 +142,7 @@ static bool make_token(char *e) {
         case TK_RP:
         case TK_EQ:
         case TK_NE:
+        case TK_LE:
         case TK_DECIMAL:
         case TK_HEX:
         case TK_REG:
@@ -237,17 +238,23 @@ word_t expr(char *e, bool *success) {
 
 int get_priority(int type) {
   switch (type) {
-  case TK_PLUS:
-  case TK_MINUS:
+  case TK_AND:
+    return 1; // 逻辑与 优先级较低
   case TK_EQ:
   case TK_NE:
-    return 1;
+    return 2; // 相等性 优先级略高
+  case TK_LE:
+    // 这里可以加上 < > >= 等其他关系运算符
+    return 3; // 关系 优先级更高
+  case TK_PLUS:
+  case TK_MINUS:
+    return 4; // 加减
   case TK_MUL:
   case TK_DIV:
   case TK_MOD:
-    return 2;
+    return 5; // 乘除模
   default:
-    return 3;
+    return 6; // 其他（非运算符）
   }
 }
 
@@ -331,10 +338,10 @@ EvalStatus eval(int p, int q, uint32_t *result) {
     return eval(p + 1, q - 1, result);
   } else {
     int op = -1;
-    int max_priority = 4; // 初始值设置为比最高优先级还高
+    int max_priority = 7; // 初始值设置为比最高优先级还高
     int level = 0;
 
-    // 找出最主要的运算符，即处于最外层且优先级最低的运算符
+    // 找出最主要的运算符，即处于最右且优先级最低的运算符
     for (int i = p; i <= q; i++) {
       if (tokens[i].type == TK_LP)
         level++;
@@ -382,7 +389,7 @@ EvalStatus eval(int p, int q, uint32_t *result) {
       *result = val1 % val2;
       break;
     case TK_AND:
-      *result = val1 & val2;
+      *result = val1 && val2;
       break;
     case TK_EQ:
       *result = (val1 == val2);
