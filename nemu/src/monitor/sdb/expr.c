@@ -141,6 +141,7 @@ static bool make_token(char *e) {
         case TK_LP:
         case TK_RP:
         case TK_EQ:
+        case TK_NE:
         case TK_DECIMAL:
         case TK_HEX:
         case TK_REG:
@@ -238,6 +239,8 @@ int get_priority(int type) {
   switch (type) {
   case TK_PLUS:
   case TK_MINUS:
+  case TK_EQ:
+  case TK_NE:
     return 1;
   case TK_MUL:
   case TK_DIV:
@@ -380,10 +383,16 @@ EvalStatus eval(int p, int q, uint32_t *result) {
       break;
     case TK_AND:
       *result = val1 & val2;
-    case TK_NE:
+      break;
+    case TK_EQ:
       *result = (val1 == val2);
+      break;
+    case TK_NE:
+      *result = (val1 != val2);
+      break;
     case TK_LE:
       *result = (val1 <= val2);
+      break;
      default:
       return EVAL_ERR_INVALID;
     }
