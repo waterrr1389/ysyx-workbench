@@ -108,13 +108,18 @@ static void gen_rand_expr(uint32_t depth) {
   }
 }
 
-int main(int argc, char *argv[]) {
+void initRamdom() {
   int seed = time(0);
   srand(seed);
+}
+int main(int argc, char *argv[]) {
+  initRamdom();
+
   int loop = 1;
   if (argc > 1) {
     sscanf(argv[1], "%d", &loop);
   }
+
   int i;
   for (i = 0; i < loop; i ++) {
     buf[0] = '\0';
@@ -126,7 +131,9 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
+    //替换code_format中的%s
     sprintf(code_buf, code_format, buf);
+
 
     FILE *fp = fopen("/tmp/.code.c", "w");
     assert(fp != NULL);

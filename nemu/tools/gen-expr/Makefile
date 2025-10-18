@@ -15,6 +15,7 @@
 
 NAME = gen-expr
 SRCS = gen-expr.c
+INPUT = input
 include $(NEMU_HOME)/scripts/build.mk
 
 gen: $(SRCS)
@@ -23,4 +24,4 @@ gen: $(SRCS)
 .phony: run
 
 run:
-	./gen-expr 1 > input
+	./build/gen-expr 100 > $(INPUT) 

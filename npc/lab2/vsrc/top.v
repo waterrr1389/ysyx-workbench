@@ -30,6 +30,7 @@ module bcd7seg (
 );
     always @(*) begin
         case (b)
+            //低电平有效
             4'd0: h = 7'b1000000; // 0
             4'd1: h = 7'b1111001; // 1
             4'd2: h = 7'b0100100; // 2
@@ -66,6 +67,7 @@ endmodule
 
 // endmodule
 
+//优先编码器
 module encoder(
     input [7:0] in,
     output reg [2:0] out,

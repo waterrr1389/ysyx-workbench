@@ -16,6 +16,7 @@
 #include "utils.h"
 #include "watchpoint.h"
 #include "sdb.h"
+#include <stdint.h>
 #include <isa.h>
 #include <cpu/cpu.h>
 #include <readline/readline.h>
@@ -49,12 +50,13 @@ static char* rl_gets() {
 }
 
 static int cmd_c(char *args) {
-  cpu_exec(-1);
+  cpu_exec(UINT64_MAX);
   return 0;
+  //上次答辩死亡点
 }
 
 static int cmd_q(char *args) {
-  set_nemu_state(NEMU_QUIT, 0, 0);
+  set_nemu_state(NEMU_QUIT, nemu_state.halt_pc, nemu_state.halt_ret);
   return -1;
 }
 
@@ -103,17 +105,26 @@ static int cmd_expr(char* args) {
 }
 
 static int cmd_x(char* args) {
-  if (strlen(args) < 2) {
-    return 1; 
+  if (args == NULL) {
+    printf("%s\n", "Please input arguments");
+    return 0;
   } else {
     int n; 
     bool success = true;
 
     char* arg1 = strtok(args, " ");
+
+    //对于同一个字符串,第二次调用时,使用NULL即可
     char* arg2 = strtok(NULL, " ");
+    if (arg2 == NULL) {
+      printf("%s\n", "Memory Scan: Please input address");
+      return 0;
+    }
+
+    //get the number of bytes
     sscanf(arg1, "%d", &n);
     uint64_t addr = expr(arg2, &success);
-  uint8_t* host_addr = guest_to_host(addr);
+    uint8_t* host_addr = guest_to_host(addr);
 
     for (int i = 0; i < 4*n; i++) {
       printf("%02x ", host_addr[i]);
@@ -187,6 +198,8 @@ void sdb_set_batch_mode() {
 }
 
 void sdb_mainloop() {
+  //see parse_args in monitor/monitor.c
+  //In normal case, the value of is_batch_mode is false
   if (is_batch_mode) {
     cmd_c(NULL);
     return;

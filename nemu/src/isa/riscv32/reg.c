@@ -30,7 +30,10 @@ void isa_reg_display() {
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
-  int index = 0;
-  sscanf(s, "%d", &index);
-  return cpu.gpr[index];
+  for (int i = 0; i < 32; i++) {
+    if (strcmp(s, regs[i]) == 0) {
+      return cpu.gpr[i];
+    }
+  }
+  return cpu.gpr[0];
 }

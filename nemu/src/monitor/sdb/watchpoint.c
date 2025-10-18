@@ -20,6 +20,7 @@
 
 static WP wp_pool[NR_WP] = {};
 static WP *head = NULL, *free_ = NULL;
+//head 已使用的, free_未使用的
 
 WP* get_watchpoint_head() {
   return head;
@@ -29,6 +30,7 @@ void init_wp_pool() {
   int i;
   for (i = 0; i < NR_WP; i ++) {
     wp_pool[i].NO = i;
+    //指向下一个节点 或者 (在结尾时)指向链表末尾
     wp_pool[i].next = (i == NR_WP - 1 ? NULL : &wp_pool[i + 1]);
   }
 
@@ -44,6 +46,8 @@ WP* new_wp() {
   }
   WP *wp = free_;
   free_ = free_->next;
+
+  //头插法加入head
   wp->next = head;
   head = wp;
   return wp;
@@ -51,6 +55,7 @@ WP* new_wp() {
 
 void free_wp(WP *wp) {
   WP *p;
+  //
   if (head == wp) {
     head = head->next;
   } else {

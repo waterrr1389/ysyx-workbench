@@ -49,8 +49,9 @@ static struct rule {
              {"\\*", '*'},      // multiply
              {"\\/", '/'},      // division
              {"\\(", '('},          {"\\)", ')'},
-             {"\\%", '%'},       {"^0[xX][0-9A-Fa-f]+", TK_HEX},
-             {"\\$[0-9]+", TK_REG}, {"[0-9]+u", TK_DECIMAL},
+             {"%", '%'},       {"^0[xX][0-9A-Fa-f]+", TK_HEX},
+             {"\\$((ra)|(sp)|(gp)|(tp)|(t0)|(t1)|(t2)|(s0)|(s1)|(a0)|(a1)|(a2)|(a3)|(a4)|(a5)|(a6)|(a7)|(s2)|(s3)|(s4)|(s5)|(s6)|(s7)|(s8)|(s9)|(s10)|(s11)|(t3)|(t4)|(t5)|(t6)|(0))\\b", TK_REG},
+              {"[0-9]+u", TK_DECIMAL},
              {"[0-9]+", TK_DECIMAL}};
 
 #define NR_REGEX ARRLEN(rules)
@@ -84,7 +85,7 @@ typedef struct token {
 static Token tokens[512] __attribute__((used)) = {};
 static int nr_token __attribute__((used)) = 0;
 
-static bool make_token(char *e) {
+static bool make_token(char* e) {
   int position = 0;
   int i;
   regmatch_t pmatch;
@@ -97,11 +98,14 @@ static bool make_token(char *e) {
       if (regexec(&re[i], e + position, 1, &pmatch, 0) == 0 &&
           pmatch.rm_so == 0) {
         char *substr_start = e + position;
+
+        //Byte offset from string's start to substring's end.
         int substr_len = pmatch.rm_eo;
 
         Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s", i,
             rules[i].regex, position, substr_len, substr_len, substr_start);
 
+        //向前移动到下一个字符串
         position += substr_len;
 
         /* TODO: Now a new token is recognized with rules[i]. Add codes
@@ -121,10 +125,10 @@ static bool make_token(char *e) {
         case TK_DECIMAL:
         case TK_HEX:
         case TK_REG:
-          token = tokens + nr_token;
-          token->type = rules[i].token_type;
-          nr_token++;
-          if (ARRLEN(token->str) < substr_len)
+          token = tokens + nr_token;//找到将要存入到tokens数组中的位置
+          token->type = rules[i].token_type;//储存类型
+          nr_token++;//
+          if (ARRLEN(token->str) < substr_len)//防止token类型自带的buf溢出
             return false;
           strncpy(token->str, substr_start, substr_len);
           token->str[substr_len] = '\0';
@@ -167,6 +171,9 @@ void categorize_minus() {
 void categorize_dereference() {
   for (int i = 0; i < nr_token; i++) {
     if (tokens[i].type == '*' &&
+      // 解引用与除号
+      // 1.这是第一个token
+      // 2.*号前面是'(', '+', '-', '*', '/'
         (i == 0 || tokens[i - 1].type == '(' || tokens[i - 1].type == '+' ||
          tokens[i - 1].type == '-' || tokens[i - 1].type == '*' ||
          tokens[i - 1].type == '/')) {
@@ -175,7 +182,7 @@ void categorize_dereference() {
   }
 }
 
-bool check_expr(int p, int q) { return true; }
+bool check_expr(int p, int q) { return (p <= q) ? true : false; }
 
 // word_t common.h uint_32 or 64
 word_t expr(char *e, bool *success) {
@@ -269,9 +276,10 @@ EvalStatus eval(int p, int q, uint32_t *result) {
       sscanf(tokens[p].str, "%u", result);
       return EVAL_SUCCESS;
     }
+    // 如果不是上述类型,说明表达式非法
     return EVAL_ERR_INVALID;
   } else if (tokens[p].type == TK_NEG) {
-    /* 处理单目负号 */
+    //处理单目负号 
     uint32_t tmp;
     EvalStatus status = eval(p + 1, q, &tmp);
     if (status != EVAL_SUCCESS)
@@ -279,13 +287,14 @@ EvalStatus eval(int p, int q, uint32_t *result) {
     *result = (uint32_t)(-((int)tmp));
     return EVAL_SUCCESS;
   } else if (check_parentheses(p, q)) {
-    /* 如果表达式被一对括号包围，则去掉最外层括号 */
+    //如果表达式被一对括号包围，则去掉最外层括号
     return eval(p + 1, q - 1, result);
   } else {
     int op = -1;
-    int min_priority = 4; // 初始值设置为比最高优先级还高
+    int max_priority = 4; // 初始值设置为比最高优先级还高
     int level = 0;
-    /* 找出最主要的运算符，即处于最外层且优先级最低的运算符 */
+    
+    //找出最主要的运算符，即处于最外层且优先级最低的运算符
     for (int i = p; i <= q; i++) {
       if (tokens[i].type == '(')
         level++;
@@ -293,21 +302,27 @@ EvalStatus eval(int p, int q, uint32_t *result) {
         level--;
       if (level == 0) {
         int priority = get_priority(tokens[i].type);
-        if (priority <= min_priority) {
-          min_priority = priority;
+        if (priority <= max_priority) {
+          max_priority = priority;
           op = i;
         }
       }
     }
     if (op == -1)
       return EVAL_ERR_INVALID;
+
+    //递归求解子表达式
     uint32_t val1, val2;
+    //求解左表达式
     EvalStatus status = eval(p, op - 1, &val1);
     if (status != EVAL_SUCCESS)
       return status;
+    //求解右表达式
     status = eval(op + 1, q, &val2);
     if (status != EVAL_SUCCESS)
       return status;
+
+    // 根据主操作符合并结果
     switch (tokens[op].type) {
     case '+':
       *result = val1 + val2;
@@ -338,6 +353,7 @@ int test() {
       fopen("/home/waterrr/ysyx-workbench/nemu/tools/gen-expr/input", "r");
   Assert(fp, "%s\n", "Failed to open file");
 
+  int correctNum = 0;
   char str[2048] = {0};
   char *exp = 0;
   char *pos = 0;
@@ -374,7 +390,8 @@ int test() {
 
     // 比较两个结果
     if (val1 == val2) {
-      printf("%d line is correct\n", row);
+      //printf("%d line is correct\n", row);
+      correctNum++;
     } else {
       printf("%d line is wrong\n", row);
     }
@@ -382,7 +399,7 @@ int test() {
 
     memset(str, 0, 2048);
   }
-
+  printf("Correct number: %d\n", correctNum);
   fclose(fp);
   
   set_nemu_state(NEMU_QUIT, 0, 0);
