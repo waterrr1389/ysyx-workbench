@@ -14,22 +14,33 @@
  ***************************************************************************************/
 
 #include <isa.h>
-
+#include <memory/paddr.h>
 /* We use the POSIX regex functions to process regular expressions.
  * Type 'man regex' for more information about POSIX regex functions.
  */
 #include <regex.h>
+#include <stdint.h>
 void set_nemu_state(int state, vaddr_t pc, int halt_ret);
 
 enum {
   TK_NOTYPE = 256,
+  TK_PLUS,
+  TK_MINUS,
+  TK_MUL,
+  TK_DIV,
+  TK_MOD,
+  TK_LP, // left parathesess
+  TK_RP,
   TK_EQ,
   TK_DECIMAL,
-  TK_NEG, // 单目负号
   TK_HEX,
   TK_REG,
+  // 单目负号和解引用不在匹配正则进行判断
+  TK_NEG,       // 单目负号
   TK_DEFERENCE, // 解引用
-  /* TODO: Add more token types */
+  TK_LE,
+  TK_NE,
+  TK_AND
 };
 
 typedef enum {
@@ -42,16 +53,24 @@ typedef enum {
 static struct rule {
   const char *regex;
   int token_type;
-} rules[] = {{" +", TK_NOTYPE}, // spaces
-             {"\\+", '+'},      // plus
-             {"==", TK_EQ},     // equal
-             {"\\-", '-'},      // 二元减法运算符
-             {"\\*", '*'},      // multiply
-             {"\\/", '/'},      // division
-             {"\\(", '('},          {"\\)", ')'},
-             {"%", '%'},       {"^0[xX][0-9A-Fa-f]+", TK_HEX},
-             {"\\$((ra)|(sp)|(gp)|(tp)|(t0)|(t1)|(t2)|(s0)|(s1)|(a0)|(a1)|(a2)|(a3)|(a4)|(a5)|(a6)|(a7)|(s2)|(s3)|(s4)|(s5)|(s6)|(s7)|(s8)|(s9)|(s10)|(s11)|(t3)|(t4)|(t5)|(t6)|(pc)|(0))\\b", TK_REG},
-              {"[0-9]+u", TK_DECIMAL},
+} rules[] = {{" +", TK_NOTYPE},
+             {"\\+", TK_PLUS},
+             {"==", TK_EQ},
+             {"\\-", TK_MINUS},
+             {"\\*", TK_MUL},
+             {"\\/", TK_DIV},
+             {"\\(", TK_LP},
+             {"\\)", TK_RP},
+             {"%", TK_MOD},
+             {"^0[xX][0-9A-Fa-f]+", TK_HEX},
+             {"<=", TK_LE},
+             {"!=", TK_NE},
+             {"&&", TK_AND},
+             {"\\$((ra)|(sp)|(gp)|(tp)|(t0)|(t1)|(t2)|(s0)|(s1)|(a0)|(a1)|(a2)|"
+              "(a3)|(a4)|(a5)|(a6)|(a7)|(s2)|(s3)|(s4)|(s5)|(s6)|(s7)|(s8)|(s9)"
+              "|(s10)|(s11)|(t3)|(t4)|(t5)|(t6)|(pc)|(0))\\b",
+              TK_REG},
+             {"[0-9]+u", TK_DECIMAL},
              {"[0-9]+", TK_DECIMAL}};
 
 #define NR_REGEX ARRLEN(rules)
@@ -85,7 +104,7 @@ typedef struct token {
 static Token tokens[512] __attribute__((used)) = {};
 static int nr_token __attribute__((used)) = 0;
 
-static bool make_token(char* e) {
+static bool make_token(char *e) {
   int position = 0;
   int i;
   regmatch_t pmatch;
@@ -99,13 +118,13 @@ static bool make_token(char* e) {
           pmatch.rm_so == 0) {
         char *substr_start = e + position;
 
-        //Byte offset from string's start to substring's end.
+        // Byte offset from string's start to substring's end.
         int substr_len = pmatch.rm_eo;
 
         Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s", i,
             rules[i].regex, position, substr_len, substr_len, substr_start);
 
-        //向前移动到下一个字符串
+        // 向前移动到下一个字符串
         position += substr_len;
 
         /* TODO: Now a new token is recognized with rules[i]. Add codes
@@ -114,21 +133,21 @@ static bool make_token(char* e) {
          */
 
         switch (rules[i].token_type) {
-        case '+':
-        case '-':
-        case '*':
-        case '/':
-        case '%':
-        case '(':
-        case ')':
+        case TK_PLUS:
+        case TK_MINUS:
+        case TK_MUL:
+        case TK_DIV:
+        case TK_MOD:
+        case TK_LP:
+        case TK_RP:
         case TK_EQ:
         case TK_DECIMAL:
         case TK_HEX:
         case TK_REG:
-          token = tokens + nr_token;//找到将要存入到tokens数组中的位置
-          token->type = rules[i].token_type;//储存类型
-          nr_token++;//
-          if (ARRLEN(token->str) < substr_len)//防止token类型自带的buf溢出
+          token = tokens + nr_token; // 找到将要存入到tokens数组中的位置
+          token->type = rules[i].token_type; // 储存类型
+          nr_token++;                        //
+          if (ARRLEN(token->str) < substr_len) // 防止token类型自带的buf溢出
             return false;
           strncpy(token->str, substr_start, substr_len);
           token->str[substr_len] = '\0';
@@ -155,28 +174,28 @@ static bool make_token(char* e) {
 
 void categorize_minus() {
   for (int i = 0; i < nr_token; i++) {
-    if (tokens[i].type == '-') {
-      // 负号情况：
-      // 1. 这是第一个 token（表达式以 `-` 开头）
-      // 2. 负号前面是 `(`、`+`、`-`、`*`、`/`
-      if (i == 0 || tokens[i - 1].type == '(' || tokens[i - 1].type == '+' ||
-          tokens[i - 1].type == '-' || tokens[i - 1].type == '*' ||
-          tokens[i - 1].type == '/') {
-        tokens[i].type = TK_NEG;
-      }
+    // 负号情况：
+    // 1. 这是第一个 token（表达式以 `-` 开头）
+    // 2. 负号前面是 `(`、`+`、`-`、`*`、`/`
+    if (tokens[i].type == TK_MINUS &&
+        (i == 0 || tokens[i - 1].type == TK_LP ||
+         tokens[i - 1].type == TK_PLUS || tokens[i - 1].type == TK_MINUS ||
+         tokens[i - 1].type == TK_MUL || tokens[i - 1].type == TK_DIV)) {
+      tokens[i].type = TK_NEG;
     }
+    {}
   }
 }
 
 void categorize_dereference() {
   for (int i = 0; i < nr_token; i++) {
-    if (tokens[i].type == '*' &&
-      // 解引用与除号
-      // 1.这是第一个token
-      // 2.*号前面是'(', '+', '-', '*', '/'
-        (i == 0 || tokens[i - 1].type == '(' || tokens[i - 1].type == '+' ||
-         tokens[i - 1].type == '-' || tokens[i - 1].type == '*' ||
-         tokens[i - 1].type == '/')) {
+    if (tokens[i].type == TK_MUL &&
+        // 解引用
+        // 1.这是第一个token
+        // 2.*号前面是'(', '+', '-', '*', '/'
+        (i == 0 || tokens[i - 1].type == TK_LP ||
+         tokens[i - 1].type == TK_PLUS || tokens[i - 1].type == TK_MINUS ||
+         tokens[i - 1].type == TK_MUL || tokens[i - 1].type == TK_DIV)) {
       tokens[i].type = TK_DEFERENCE;
     }
   }
@@ -204,11 +223,11 @@ word_t expr(char *e, bool *success) {
   EvalStatus status = eval(0, nr_token - 1, &result);
   if (status != EVAL_SUCCESS) {
     *success = false;
-    if (status == EVAL_ERR_ZERODIV) {
-      printf("Error: Division by zero!\n");
-    } else if (status == EVAL_ERR_INVALID) {
-      printf("Error: Invalid expression!\n");
-    }
+   if (status == EVAL_ERR_ZERODIV) {
+    printf("Error: Division by zero!\n");
+  } else if (status == EVAL_ERR_INVALID) {
+    printf("Error: Invalid expression!\n");
+  }
     return 0;
   }
   *success = true;
@@ -217,12 +236,12 @@ word_t expr(char *e, bool *success) {
 
 int get_priority(int type) {
   switch (type) {
-  case '+':
-  case '-':
+  case TK_PLUS:
+  case TK_MINUS:
     return 1;
-  case '*':
-  case '/':
-  case '%':
+  case TK_MUL:
+  case TK_DIV:
+  case TK_MOD:
     return 2;
   default:
     return 3;
@@ -233,16 +252,16 @@ bool check_parentheses(int p, int q) {
   int close = 0;
 
   // 首先检查最外层是否有一对匹配括号
-  if (tokens[p].type != '(' || tokens[q].type != ')') {
+  if (tokens[p].type != TK_LP || tokens[q].type != TK_RP) {
     return false; // 最外层没有括号，直接返回 false
   }
 
   // 遍历所有 token
   for (int i = p; i <= q; i++) {
     int type = tokens[i].type;
-    if (type == '(')
+    if (type == TK_LP)
       close++;
-    if (type == ')')
+    if (type == TK_RP)
       close--;
 
     // 一旦右括号比左括号多，说明不匹配
@@ -259,6 +278,15 @@ bool check_parentheses(int p, int q) {
     return false;
 
   return true;
+}
+
+static uint32_t deRef(word_t addr) {
+  uint8_t* host_addr = guest_to_host(addr);
+  uint32_t val;
+  for (int i = 0; i < 3; i++) {
+    val = (val << i*8) + *host_addr++;
+  }
+  return val;
 }
 
 EvalStatus eval(int p, int q, uint32_t *result) {
@@ -279,26 +307,34 @@ EvalStatus eval(int p, int q, uint32_t *result) {
     // 如果不是上述类型,说明表达式非法
     return EVAL_ERR_INVALID;
   } else if (tokens[p].type == TK_NEG) {
-    //处理单目负号 
+    // 处理单目负号
     uint32_t tmp;
     EvalStatus status = eval(p + 1, q, &tmp);
     if (status != EVAL_SUCCESS)
       return status;
     *result = (uint32_t)(-((int)tmp));
     return EVAL_SUCCESS;
+   } else if (tokens[p].type == TK_DEFERENCE) {
+    uint32_t tmp;
+    EvalStatus status = eval(p + 1, q, &tmp);
+    if (status != EVAL_SUCCESS)
+      return status;
+    *result = deRef(tmp);
+    return EVAL_SUCCESS;
+    
   } else if (check_parentheses(p, q)) {
-    //如果表达式被一对括号包围，则去掉最外层括号
+    // 如果表达式被一对括号包围，则去掉最外层括号
     return eval(p + 1, q - 1, result);
   } else {
     int op = -1;
     int max_priority = 4; // 初始值设置为比最高优先级还高
     int level = 0;
-    
-    //找出最主要的运算符，即处于最外层且优先级最低的运算符
+
+    // 找出最主要的运算符，即处于最外层且优先级最低的运算符
     for (int i = p; i <= q; i++) {
-      if (tokens[i].type == '(')
+      if (tokens[i].type == TK_LP)
         level++;
-      if (tokens[i].type == ')')
+      if (tokens[i].type == TK_RP)
         level--;
       if (level == 0) {
         int priority = get_priority(tokens[i].type);
@@ -311,37 +347,43 @@ EvalStatus eval(int p, int q, uint32_t *result) {
     if (op == -1)
       return EVAL_ERR_INVALID;
 
-    //递归求解子表达式
+    // 递归求解子表达式
     uint32_t val1, val2;
-    //求解左表达式
+    // 求解左表达式
     EvalStatus status = eval(p, op - 1, &val1);
     if (status != EVAL_SUCCESS)
       return status;
-    //求解右表达式
+    // 求解右表达式
     status = eval(op + 1, q, &val2);
     if (status != EVAL_SUCCESS)
       return status;
 
     // 根据主操作符合并结果
     switch (tokens[op].type) {
-    case '+':
+    case TK_PLUS:
       *result = val1 + val2;
       break;
-    case '-':
+    case TK_MINUS:
       *result = val1 - val2;
       break;
-    case '*':
+    case TK_MUL:
       *result = val1 * val2;
       break;
-    case '/':
+    case TK_DIV:
       if (val2 == 0)
         return EVAL_ERR_ZERODIV;
       *result = val1 / val2;
       break;
-    case '%':
+    case TK_MOD:
       *result = val1 % val2;
       break;
-    default:
+    case TK_AND:
+      *result = val1 & val2;
+    case TK_NE:
+      *result = (val1 == val2);
+    case TK_LE:
+      *result = (val1 <= val2);
+     default:
       return EVAL_ERR_INVALID;
     }
     return EVAL_SUCCESS;
@@ -390,7 +432,7 @@ int test() {
 
     // 比较两个结果
     if (val1 == val2) {
-      //printf("%d line is correct\n", row);
+      // printf("%d line is correct\n", row);
       correctNum++;
     } else {
       printf("Line%d is wrong: val = %d ref = %d\n", row, val1, val2);
@@ -401,7 +443,7 @@ int test() {
   }
   printf("Correct number: %d\n", correctNum);
   fclose(fp);
-  
+
   set_nemu_state(NEMU_QUIT, 0, 0);
   return 0;
 }

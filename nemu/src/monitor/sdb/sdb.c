@@ -124,7 +124,7 @@ static int cmd_x(char* args) {
 
     //get the number of bytes
     sscanf(arg1, "%d", &n);
-    uint64_t addr = expr(arg2, &success);
+    word_t addr = expr(arg2, &success);
     uint8_t* host_addr = guest_to_host(addr);
 
     for (int i = 0; i < 4*n; i++) {
