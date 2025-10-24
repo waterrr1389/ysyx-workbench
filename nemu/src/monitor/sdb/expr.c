@@ -216,6 +216,12 @@ bool check_expr(int p, int q) { return (p <= q) ? true : false; }
 
 // word_t common.h uint_32 or 64
 word_t expr(char *e, bool *success) {
+  if (e == NULL) {
+      if (success != NULL) *success = false;
+      printf("Error: Expression is NULL.\n");
+      return 0;
+  }
+  
   if (!make_token(e)) {
     *success = false;
     return 0;

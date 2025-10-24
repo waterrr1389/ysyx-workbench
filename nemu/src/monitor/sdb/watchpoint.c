@@ -55,11 +55,14 @@ WP* new_wp() {
 }
 
 void free_wp(WP *wp) {
-  WP *p;
-  //
+  if (wp == NULL) {
+    printf("Watchpoint to free is NULL.\n");
+    return;
+  }
   if (head == wp) {
     head = head->next;
   } else {
+    WP *p;
     for (p = head; p != NULL; p = p->next) {
       if (p->next == wp) {
         p->next = wp->next;
