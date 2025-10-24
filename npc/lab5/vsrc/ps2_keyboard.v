@@ -17,6 +17,7 @@ module ps2_keyboard(clk,reset,ps2_clk,ps2_data,data,
         ps2_clk_sync <=  {ps2_clk_sync[1:0],ps2_clk};
     end
 
+    // 检测时钟下降沿
     wire sampling = ps2_clk_sync[2] & ~ps2_clk_sync[1];
 
     always @(posedge clk) begin
@@ -34,11 +35,11 @@ module ps2_keyboard(clk,reset,ps2_clk,ps2_data,data,
             end
             if (sampling) begin
               if (count == 4'd10) begin
-                if ((buffer[0] == 0) &&  // start bit
-                    (ps2_data)       &&  // stop bit
-                    (^buffer[9:1])) begin      // odd  parity
+                if ((buffer[0] == 0) &&  // start bit(逻辑0)
+                    (ps2_data)       &&  // stop bit(逻辑1)
+                    (^buffer[9:1])) begin      // 奇校验位
                     fifo[w_ptr] <= buffer[8:1];  // kbd scan code
-                    w_ptr <= w_ptr+3'b1;
+                    w_ptr <= w_ptr+3'b1; //写指针向后移1
                     ready <= 1'b1;
                     overflow <= overflow | (r_ptr == (w_ptr + 3'b1));
                 end

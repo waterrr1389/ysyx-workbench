@@ -248,24 +248,26 @@ word_t expr(char *e, bool *success) {
 int get_priority(int type) {
   switch (type) {
   case TK_AND:
-    return 1; // 逻辑与 优先级较低
+    return 1;
   case TK_EQ:
   case TK_NE:
-    return 2; // 相等性 优先级略高
-    //关系运算符
+    return 2;
   case TK_LE:
   case TK_GE:
-    // 这里可以加上 < > >= 等其他关系运算符
-    return 3; 
+    return 3;
   case TK_PLUS:
   case TK_MINUS:
-    return 4; // 加减
+    return 4;
   case TK_MUL:
   case TK_DIV:
   case TK_MOD:
-    return 5; // 乘除模
+    return 5;
+  // 单目运算符优先级最高
+  case TK_NEG:
+  case TK_DEFERENCE:
+    return 6; 
   default:
-    return 6; // 其他（非运算符）
+    return 7; 
   }
 }
 
@@ -305,7 +307,7 @@ static uint32_t deRef(word_t addr) {
   //无符号
   uint8_t* host_addr = guest_to_host(addr);
   uint32_t val = 0;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 4; i++) {
     val += (*host_addr << i*8);
     host_addr++;
   }
@@ -321,7 +323,11 @@ EvalStatus eval(int p, int q, uint32_t *result) {
       sscanf(tokens[p].str, "%x", result);
       return EVAL_SUCCESS;
     } else if (tokens[p].type == TK_REG) {
-      *result = isa_reg_str2val(tokens[p].str, NULL);
+      bool success = false;
+      *result = isa_reg_str2val(tokens[p].str, &success);
+      if (!success) {
+        return EVAL_ERR_INVALID;
+      }
       return EVAL_SUCCESS;
     } else if (tokens[p].type == TK_DECIMAL) {
       sscanf(tokens[p].str, "%u", result);
@@ -329,48 +335,76 @@ EvalStatus eval(int p, int q, uint32_t *result) {
     }
     // 如果不是上述类型,说明表达式非法
     return EVAL_ERR_INVALID;
-  } else if (tokens[p].type == TK_NEG) {
-    // 处理单目负号
-    uint32_t tmp;
-    EvalStatus status = eval(p + 1, q, &tmp);
-    if (status != EVAL_SUCCESS)
-      return status;
-    *result = (uint32_t)(-((int)tmp));
-    return EVAL_SUCCESS;
-   } else if (tokens[p].type == TK_DEFERENCE) {
-    uint32_t tmp;
-    EvalStatus status = eval(p + 1, q, &tmp);
-    if (status != EVAL_SUCCESS)
-      return status;
-    *result = deRef(tmp);
-    return EVAL_SUCCESS;
-    
-  } else if (check_parentheses(p, q)) {
+  } 
+
+  else if (check_parentheses(p, q)) {
     // 如果表达式被一对括号包围，则去掉最外层括号
     return eval(p + 1, q - 1, result);
   } else {
     int op = -1;
-    int max_priority = 7; // 初始值设置为比最高优先级还高
+    int min_priority = 8; 
     int level = 0;
 
-    // 找出最主要的运算符，即处于最右且优先级最低的运算符
+
+    // 查找优先级最低的二元运算符
     for (int i = p; i <= q; i++) {
-      if (tokens[i].type == TK_LP)
-        level++;
-      if (tokens[i].type == TK_RP)
-        level--;
-      if (level == 0) {
-        int priority = get_priority(tokens[i].type);
-        if (priority <= max_priority) {
-          max_priority = priority;
+      if (tokens[i].type == TK_LP) level++;
+      if (tokens[i].type == TK_RP) level--;
+      if (level != 0) continue; // 在括号内，跳过
+
+      int priority = get_priority(tokens[i].type);
+      if (priority >= 1 && priority <= 5) { // 仅查找二元运算符
+        if (priority <= min_priority) {
+          min_priority = priority;
           op = i;
         }
       }
     }
-    if (op == -1)
-      return EVAL_ERR_INVALID;
 
-    // 递归求解子表达式
+    // 如果没有找到二元运算符 (op == -1), 
+    // 说明这应该是一个单目运算 (优先级 6)
+    // 单目运算符是右结合的,查找位置最左的
+    if (op == -1) {
+      level = 0;
+      for (int i = p; i <= q; i++) { // 从左到右
+        if (tokens[i].type == TK_LP) level++;
+        if (tokens[i].type == TK_RP) level--;
+        if (level != 0) continue;
+
+        int priority = get_priority(tokens[i].type);
+        if (priority == 6) { // 找到单目运算符
+          min_priority = priority;
+          op = i;
+          break; // 找到最左边的就停止
+        }
+      }
+    }
+    
+    if (op == -1) {
+        // 既不是二元也不是单目，也不是括号和单个token，表达式非法
+        return EVAL_ERR_INVALID;
+    }
+
+    // 如果是单目运算符
+    if (min_priority == 6) {
+      uint32_t val;
+      EvalStatus status = eval(op + 1, q, &val); // 递归右侧
+      if (status != EVAL_SUCCESS)
+        return status;
+      
+      switch (tokens[op].type) {
+        case TK_NEG:
+          *result = (uint32_t)(-((int)val));
+          break;
+        case TK_DEFERENCE:
+          *result = deRef(val);
+          break;
+        default: return EVAL_ERR_INVALID;
+      }
+      return EVAL_SUCCESS;
+    }
+
+    // 如果是二元运算符 (min_priority 1-5)
     uint32_t val1, val2;
     // 求解左表达式
     EvalStatus status = eval(p, op - 1, &val1);
@@ -381,7 +415,7 @@ EvalStatus eval(int p, int q, uint32_t *result) {
     if (status != EVAL_SUCCESS)
       return status;
 
-    // 根据主操作符合并结果
+    // 根据主操作符合并结果 
     switch (tokens[op].type) {
     case TK_PLUS:
       *result = val1 + val2;

@@ -105,41 +105,12 @@ module top(
 
     //display logic
     wire[7:0] ascii;
-    MuxKeyWithDefault #(31, 8, 8) i0 (.out(ascii), .key(buffer[0]), .default_out(0), 
+    MuxKeyWithDefault #(4, 8, 8) i0 (.out(ascii), .key(buffer[0]), .default_out(0), 
     .lut({ 
-        // 常用字母wasd的扫描码对应的ASCII码
-        8'h29, 8'h20, //space
-        8'h5a, 8'h0a,  //enter
-        8'h76, 8'h1b,  //esc
-        8'h66, 8'h08,  //backspace
-        8'h0d, 8'h09,   //tab
-        //letter
-        8'h1c, 8'h61,  //a
-        8'h32, 8'h62,  //b
-        8'h21, 8'h63,  //c
+        8'h1c, 8'h61, //a
+        8'h1b, 8'h73, //w
         8'h23, 8'h64,  //d
-        8'h24, 8'h65,  //e
-        8'h2b, 8'h66,  //f
-        8'h34, 8'h67,  //g
-        8'h33, 8'h68,  //h
-        8'h43, 8'h69,  //i
-        8'h3b, 8'h6a,  //j
-        8'h42, 8'h6b,  //k
-        8'h4b, 8'h6c,  //l
-        8'h3a, 8'h6d,  //m
-        8'h31, 8'h6e,  //n
-        8'h44, 8'h6f,  //o
-        8'h4d, 8'h70,  //p
-        8'h15, 8'h71,  //q
-        8'h2d, 8'h72,  //r
-        8'h1b, 8'h73,  //s
-        8'h2c, 8'h74,  //t
-        8'h3c, 8'h75,  //u
-        8'h2a, 8'h76,  //v
-        8'h1d, 8'h77,  //w
-        8'h22, 8'h78,  //x
-        8'h35, 8'h79,  //y
-        8'h1a, 8'h7a   //z
+        8'h1d, 8'h77 //s
     }));
     
     

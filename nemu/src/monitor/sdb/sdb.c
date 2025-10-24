@@ -86,6 +86,10 @@ static int cmd_info_w(char* args) {
 } 
 
 static int cmd_info(char* args) {
+  if (args == NULL) {
+    printf("Please input 'r' or 'w'\n");
+    return 0;
+  }
   if (args[0] == 'r') 
     cmd_info_r(args);
   else if (args[0] == 'w')
@@ -148,9 +152,19 @@ static int cmd_w(char* args) {
 }
 
 static int cmd_d(char* args) {
+  if (args == NULL) {
+    printf("Please input watchpoint index to delete\n");
+    return 0;
+  }
   int index;
-  sscanf("%d", args, &index);
-  free(get_wp(index));
+  sscanf(args, "%d", &index);
+  printf("Delete watchpoint %d\n", index);
+  WP* wp = get_wp(index);
+  if (wp == NULL) {
+    printf("Watchpoint %d does not exist\n", index);
+    return 0;
+  }
+  free_wp(wp);
   return 0;
 }
 

@@ -7,7 +7,7 @@
 #include <assert.h>
 #include <string.h>
 
-#define MAX_DEPTH 10
+#define MAX_DEPTH 11
 // 这个缓冲区已经绰绰有余且非常安全
 #define BUFFER_SIZE 100000 
 static char buf[BUFFER_SIZE] = {};
@@ -104,18 +104,21 @@ int main(int argc, char *argv[]) {
 
         sprintf(code_buf, code_format, buf);
 
+        // 以写入方式打开文件
         FILE *fp = fopen("/tmp/.code.c", "w");
         assert(fp != NULL);
+        // 将生成的代码写入文件
         fputs(code_buf, fp);
         fclose(fp);
 
-        //将除零警告转换为错误,检查返回值,出现除0则丢弃
+        // 将除零警告转换为错误,检查返回值,出现除0则丢弃
         int ret = system("gcc -Wall -Werror -Wno-parentheses -Wno-unused-variable /tmp/.code.c -o /tmp/.expr");
         if (ret != 0) {
             i--;
             continue;
         }
 
+        // 执行生成的程序并使用管道读取其输出
         fp = popen("/tmp/.expr", "r");
         assert(fp != NULL);
 

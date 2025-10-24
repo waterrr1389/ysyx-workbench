@@ -101,8 +101,12 @@ config CC_O3
   bool "O3"
 endchoice
 
-config CC_EXPR 
+config EXPR 
   bool "expr-test"
+  default n
+
+config WATCHPOINT
+  bool "watchpoint"
   default n
 
 config CC_OPT

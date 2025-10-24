@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
   init_monitor(argc, argv);
 #endif
 
-#ifdef CONFIG_CC_EXPR
+#ifdef CONFIG_EXPR
   test();
 #endif  
   /* Start engine. */
