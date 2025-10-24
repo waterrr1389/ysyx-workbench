@@ -84,7 +84,7 @@ WP* get_wp(int NO) {
 void watchpoint_display() {
   WP *p;
   for (p = head; p != NULL; p = p->next) {
-    printf("Watchpoint %d: %s = %u\n", p->NO, p->str, p->value);
+    printf("Watchpoint %d: %s = %08x\n", p->NO, p->str, p->value);
   }
 }
 
@@ -99,9 +99,10 @@ void check_watchpoints() {
       printf("Error evaluating watchpoint expression '%s'\n", wp->str);
     } else {
       if (origin_val != curr_val) {
-        printf("Watchpoint %d: %s changed from %u to %u\n",
+        printf("Watchpoint %d: %s changed from %08x to %08x\n",
                    wp->NO, wp->str, origin_val, curr_val);
-        if (nemu_state.state != NEMU_END) nemu_state.state = NEMU_STOP;
+        // if state == NEMU_END, do not change it
+        if (nemu_state.state != NEMU_END) nemu_state.state = NEMU_STOP; 
         wp->value = curr_val;
       }
     }

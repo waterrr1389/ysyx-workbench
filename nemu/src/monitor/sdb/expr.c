@@ -39,6 +39,7 @@ enum {
   TK_NEG,       // 单目负号
   TK_DEFERENCE, // 解引用
   TK_LE,
+  TK_GE,
   TK_NE,
   TK_AND
 };
@@ -57,6 +58,7 @@ static struct rule {
              {"\\+", TK_PLUS},
              {"==", TK_EQ},
              {"<=", TK_LE},
+             {">=", TK_GE},
              {"!=", TK_NE},
              {"\\-", TK_MINUS},
              {"\\*", TK_MUL},
@@ -121,8 +123,8 @@ static bool make_token(char *e) {
         // Byte offset from string's start to substring's end.
         int substr_len = pmatch.rm_eo;
 
-        Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s", i,
-            rules[i].regex, position, substr_len, substr_len, substr_start);
+        //Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s", i,
+        //    rules[i].regex, position, substr_len, substr_len, substr_start);
 
         // 向前移动到下一个字符串
         position += substr_len;
@@ -143,6 +145,7 @@ static bool make_token(char *e) {
         case TK_EQ:
         case TK_NE:
         case TK_LE:
+        case TK_GE:
         case TK_DECIMAL:
         case TK_HEX:
         case TK_REG:
@@ -182,7 +185,10 @@ void categorize_minus() {
     if (tokens[i].type == TK_MINUS &&
         (i == 0 || tokens[i - 1].type == TK_LP ||
          tokens[i - 1].type == TK_PLUS || tokens[i - 1].type == TK_MINUS ||
-         tokens[i - 1].type == TK_MUL || tokens[i - 1].type == TK_DIV)) {
+         tokens[i - 1].type == TK_MUL || tokens[i - 1].type == TK_DIV || tokens[i - 1].type == TK_AND || 
+        tokens[i - 1].type == TK_EQ || tokens[i - 1].type == TK_NE ||
+        tokens[i - 1].type == TK_LE || tokens[i - 1].type == TK_GE
+        )) {
       tokens[i].type = TK_NEG;
     }
     {}
@@ -197,7 +203,10 @@ void categorize_dereference() {
         // 2.*号前面是'(', '+', '-', '*', '/'
         (i == 0 || tokens[i - 1].type == TK_LP ||
          tokens[i - 1].type == TK_PLUS || tokens[i - 1].type == TK_MINUS ||
-         tokens[i - 1].type == TK_MUL || tokens[i - 1].type == TK_DIV)) {
+         tokens[i - 1].type == TK_MUL || tokens[i - 1].type == TK_DIV || tokens[i - 1].type == TK_AND || 
+        tokens[i - 1].type == TK_EQ || tokens[i - 1].type == TK_NE ||
+        tokens[i - 1].type == TK_LE || tokens[i - 1].type == TK_GE
+        )) {
       tokens[i].type = TK_DEFERENCE;
     }
   }
@@ -243,9 +252,11 @@ int get_priority(int type) {
   case TK_EQ:
   case TK_NE:
     return 2; // 相等性 优先级略高
+    //关系运算符
   case TK_LE:
+  case TK_GE:
     // 这里可以加上 < > >= 等其他关系运算符
-    return 3; // 关系 优先级更高
+    return 3; 
   case TK_PLUS:
   case TK_MINUS:
     return 4; // 加减
@@ -291,6 +302,7 @@ bool check_parentheses(int p, int q) {
 }
 
 static uint32_t deRef(word_t addr) {
+  //无符号
   uint8_t* host_addr = guest_to_host(addr);
   uint32_t val = 0;
   for (int i = 0; i < 3; i++) {
@@ -399,6 +411,9 @@ EvalStatus eval(int p, int q, uint32_t *result) {
       break;
     case TK_LE:
       *result = (val1 <= val2);
+      break;
+    case TK_GE:
+      *result = (val1 >= val2);
       break;
      default:
       return EVAL_ERR_INVALID;

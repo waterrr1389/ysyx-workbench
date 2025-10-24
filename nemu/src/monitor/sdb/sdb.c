@@ -232,6 +232,7 @@ void sdb_mainloop() {
     int i;
     for (i = 0; i < NR_CMD; i ++) {
       if (strcmp(cmd, cmd_table[i].name) == 0) {
+        // 正常情况下应该返回0,如果返回-1则会退出
         if (cmd_table[i].handler(args) < 0) { return; }
         break;
       }

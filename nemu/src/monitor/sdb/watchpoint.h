@@ -10,7 +10,7 @@ typedef struct watchpoint {
   uint32_t value;
   /* TODO: Add more members if necessary */
 
-} WP;
+} WP; // 单向链表
 
 WP* new_wp();
 void free_wp(WP *wp);

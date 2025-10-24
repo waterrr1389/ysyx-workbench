@@ -123,7 +123,7 @@ void cpu_exec(uint64_t n) {
     printf("Program execution has ended. To restart the program, exit NEMU and "
            "run again.\n");
     return;
-  default:
+  default: // NEMU_STOP and NEMU_RUNNING
     nemu_state.state = NEMU_RUNNING;
   }
 
@@ -135,7 +135,7 @@ void cpu_exec(uint64_t n) {
   g_timer += timer_end - timer_start;
 
   switch (nemu_state.state) {
-  case NEMU_RUNNING:
+  case NEMU_RUNNING: // if execution is finished normally
     nemu_state.state = NEMU_STOP;
     break;
 
