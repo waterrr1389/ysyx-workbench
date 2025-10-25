@@ -69,7 +69,7 @@ module top(
         if (reset) begin
             key_is_pressed <= 1'b0;
         end
-        // S2状态表示S1刚刚完成接收, buffer[0] 和 buffer[1] 都是最新的
+        // S2状态,已完成数据接收
         else if (state == S2) begin
             if (buffer[1] == 8'hF0) begin
                 // 上一个字节是F0, 表示当前字节(buffer[0])是断码的第二字节
@@ -87,15 +87,15 @@ module top(
 
     //count logic
     wire release_detected = (buffer[1] == 8'hF0);
-    reg release_detected_dly;
+    reg release_detected_old;
 
     always @(posedge clk) begin
-        if (reset) release_detected_dly <= 1'b0;
-        else       release_detected_dly <= release_detected;
+        if (reset) release_detected_old <= 1'b0;
+        else       release_detected_old <= release_detected;
     end
 
     //上一个周期为0,说明按下;该周期为1,count_event转为1,说明检测到一次松开
-    wire count_event = release_detected && !release_detected_dly;
+    wire count_event = release_detected && !release_detected_old;
     
     always @(posedge clk) begin
         if (reset) key_press_count <= 8'h00;

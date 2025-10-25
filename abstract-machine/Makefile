@@ -51,8 +51,8 @@ DST_DIR   = $(WORK_DIR)/build/$(ARCH)
 $(shell mkdir -p $(DST_DIR))
 
 ### Compilation targets (a binary image or archive)
-IMAGE_REL = build/$(NAME)-$(ARCH)
-IMAGE     = $(abspath $(IMAGE_REL))
+IMAGE_REL = build/$(NAME)-$(ARCH) # 相对路径
+IMAGE     = $(abspath $(IMAGE_REL)) # 绝对路径
 ARCHIVE   = $(WORK_DIR)/build/$(NAME)-$(ARCH).a
 
 ### Collect the files to be linked: object files (`.o`) and libraries (`.a`)
@@ -76,7 +76,8 @@ OBJCOPY   = $(CROSS_COMPILE)objcopy
 READELF   = $(CROSS_COMPILE)readelf
 
 ### Compilation flags
-INC_PATH += $(WORK_DIR)/include $(addsuffix /include/, $(addprefix $(AM_HOME)/, $(LIBS)))
+# 3个目录 -I$(AM_HOME)/klib/include -I$(AM_HOME)/am/include -I$(AM_HOME)/include
+INC_PATH += $(WORK_DIR)/include $(addsuffix /include/, $(addprefix $(AM_HOME)/, $(LIBS))) 
 INCFLAGS += $(addprefix -I, $(INC_PATH))
 
 ARCH_H := arch/$(ARCH).h
