@@ -53,7 +53,6 @@ static char* rl_gets() {
 static int cmd_c(char *args) {
   cpu_exec(UINT64_MAX);
   return 0;
-  //上次答辩死亡点
 }
 
 static int cmd_q(char *args) {
@@ -103,8 +102,8 @@ static int cmd_expr(char* args) {
     return 0;
   }
   bool success = true;
-  uint32_t result = expr(args, &success);
-  printf("%08x\n", result);
+  word_t result = expr(args, &success);
+  printf(FMT_WORD, result);
   return 0;
 }
 

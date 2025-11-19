@@ -13,6 +13,7 @@
  * See the Mulan PSL v2 for more details.
  ***************************************************************************************/
 
+#include "common.h"
 #include <isa.h>
 #include <memory/paddr.h>
 /* We use the POSIX regex functions to process regular expressions.
@@ -236,7 +237,7 @@ word_t expr(char *e, bool *success) {
     return 0;
   }
 
-  uint32_t result;
+  word_t result;
   EvalStatus status = eval(0, nr_token - 1, &result);
   if (status != EVAL_SUCCESS) {
     *success = false;
@@ -309,10 +310,10 @@ bool check_parentheses(int p, int q) {
   return true;
 }
 
-static uint32_t deRef(word_t addr) {
+static word_t deRef(word_t addr) {
   //无符号
   uint8_t* host_addr = guest_to_host(addr);
-  uint32_t val = 0;
+  word_t val = 0;
   for (int i = 0; i < 4; i++) {
     val += (*host_addr << i*8);
     host_addr++;
@@ -320,7 +321,7 @@ static uint32_t deRef(word_t addr) {
   return val;
 }
 
-EvalStatus eval(int p, int q, uint32_t *result) {
+EvalStatus eval(int p, int q, word_t *result) {
   if (p > q) {
     return EVAL_ERR_INVALID;
   } else if (p == q) {
@@ -393,14 +394,14 @@ EvalStatus eval(int p, int q, uint32_t *result) {
 
     // 如果是单目运算符
     if (min_priority == 6) {
-      uint32_t val;
+      word_t val;
       EvalStatus status = eval(op + 1, q, &val); // 递归右侧
       if (status != EVAL_SUCCESS)
         return status;
       
       switch (tokens[op].type) {
         case TK_NEG:
-          *result = (uint32_t)(-((int)val));
+          *result = (word_t)(-((int)val));
           break;
         case TK_DEFERENCE:
           *result = deRef(val);
@@ -411,7 +412,7 @@ EvalStatus eval(int p, int q, uint32_t *result) {
     }
 
     // 如果是二元运算符 (min_priority 1-5)
-    uint32_t val1, val2;
+    word_t val1, val2;
     // 求解左表达式
     EvalStatus status = eval(p, op - 1, &val1);
     if (status != EVAL_SUCCESS)
