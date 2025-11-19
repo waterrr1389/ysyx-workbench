@@ -22,6 +22,8 @@ The main features of NEMU include
     * only RV32IM
   * riscv64
     * only RV64IM
+  * gameboy
+    * TODO
 * memory
 * paging
   * TLB is optional (but necessary for mips32)
