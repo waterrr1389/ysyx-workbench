@@ -33,6 +33,7 @@ enum { DIFFTEST_TO_DUT, DIFFTEST_TO_REF };
 #define DIFFTEST_REG_SIZE (sizeof(RISCV_GPR_TYPE) * (RISCV_GPR_NUM + 1)) // GPRs + pc
 #elif defined(CONFIG_ISA_loongarch32r)
 # define DIFFTEST_REG_SIZE (sizeof(uint32_t) * 33) // GPRs + pc
+#elif defined(CONFIG_ISA_gameboy)
 #else
 # error Unsupport ISA
 #endif
