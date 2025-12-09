@@ -13,16 +13,15 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
+#include "sdb.h"
 #include "common.h"
 #include "utils.h"
 #include "watchpoint.h"
-#include "sdb.h"
-#include <stdint.h>
-#include <isa.h>
 #include <cpu/cpu.h>
-#include <readline/readline.h>
-#include <readline/history.h>
+#include <isa.h>
 #include <memory/paddr.h>
+#include <readline/history.h>
+#include <readline/readline.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,233 +31,240 @@ static int is_batch_mode = false;
 void init_regex();
 void init_wp_pool();
 
-/* We use the `readline' library to provide more flexibility to read from stdin. */
-static char* rl_gets() {
-  static char *line_read = NULL;
+/* We use the `readline' library to provide more flexibility to read from stdin.
+ */
+static char *rl_gets() {
+	static char *line_read = NULL;
 
-  if (line_read) {
-    free(line_read);
-    line_read = NULL;
-  }
+	if (line_read) {
+		free(line_read);
+		line_read = NULL;
+	}
 
-  line_read = readline("(nemu) ");
+	line_read = readline("(nemu) ");
 
-  if (line_read && *line_read) {
-    add_history(line_read);
-  }
+	if (line_read && *line_read) {
+		add_history(line_read);
+	}
 
-  return line_read;
+	return line_read;
 }
 
 static int cmd_c(char *args) {
-  cpu_exec(UINT64_MAX);
-  return 0;
+	cpu_exec(UINT64_MAX);
+	return 0;
 }
 
 static int cmd_q(char *args) {
-  set_nemu_state(NEMU_QUIT, nemu_state.halt_pc, nemu_state.halt_ret);
-  return -1;
+	set_nemu_state(NEMU_QUIT, nemu_state.halt_pc, nemu_state.halt_ret);
+	return -1;
 }
 
 static int cmd_help(char *args);
 
-static int cmd_si(char* args) {
-  int n;
-  if (args == NULL) {
-    n = 1;
-  } else {
-    sscanf(args, "%d", &n);
-  }
-  cpu_exec(n);
-  return 0;
+static int cmd_si(char *args) {
+	int n;
+	if (args == NULL) {
+		n = 1;
+	} else {
+		sscanf(args, "%d", &n);
+	}
+	cpu_exec(n);
+	return 0;
 }
 
-static int cmd_info_r(char* args) {
-  isa_reg_display();
-  return 0;
+static int cmd_info_r(char *args) {
+	isa_reg_display();
+	return 0;
 }
 
-static int cmd_info_w(char* args) {
-  watchpoint_display();
-  
-  return 0;
-} 
+static int cmd_info_w(char *args) {
+    watchpoint_display();
 
-static int cmd_info(char* args) {
-  if (args == NULL) {
-    printf("Please input 'r' or 'w'\n");
-    return 0;
-  }
-  if (args[0] == 'r') 
-    cmd_info_r(args);
-  else if (args[0] == 'w')
-    cmd_info_w(args);
-
-  return 0;
+	return 0;
 }
 
-static int cmd_expr(char* args) {
-  if (args == NULL) {
-    return 0;
-  }
-  bool success = true;
-  word_t result = expr(args, &success);
-  printf(FMT_WORD, result);
-  return 0;
+static int cmd_info(char *args) {
+	if (args == NULL) {
+		printf("Please input 'r' or 'w'\n");
+		return 0;
+	}
+	if (args[0] == 'r')
+		cmd_info_r(args);
+	else if (args[0] == 'w')
+		cmd_info_w(args);
+
+	return 0;
 }
 
-static int cmd_x(char* args) {
-  if (args == NULL) {
-    printf("%s\n", "Please input arguments");
-    return 0;
-  } else {
-    int n; 
-    bool success = true;
-
-    char* arg1 = strtok(args, " ");
-
-    //对于同一个字符串,第二次调用时,使用NULL即可
-    char* arg2 = strtok(NULL, " ");
-    if (arg2 == NULL) {
-      printf("%s\n", "Memory Scan: Please input address");
-      return 0;
-    }
-
-    //get the number of bytes
-    sscanf(arg1, "%d", &n);
-    word_t addr = expr(arg2, &success);
-    uint8_t* host_addr = guest_to_host(addr);
-
-    for (int i = 0; i < 4*n; i++) {
-      printf("%02x ", host_addr[i]);
-      if (i % 4 == 3) printf("\n");
-    }
-    printf("\n");
-  }
-  return 0;
+static int cmd_expr(char *args) {
+	if (args == NULL) {
+		return 0;
+	}
+	bool success = true;
+	word_t result = expr(args, &success);
+	printf(FMT_WORD, result);
+	return 0;
 }
 
-static int cmd_w(char* args) {
-  if (args == NULL) {
-    printf("Please input expr for watchpoints\n");
-    return 0;
-  }
-  WP* wp = new_wp();
-  bool success = true;
-  strcpy(wp->str, args);
-  wp->value = expr(args, &success);
-  return 0;
+static int cmd_x(char *args) {
+	if (args == NULL) {
+		printf("%s\n", "Please input arguments");
+		return 0;
+	} else {
+		int n;
+		bool success = true;
+
+		char *arg1 = strtok(args, " ");
+
+		// 对于同一个字符串,第二次调用时,使用NULL即可
+		char *arg2 = strtok(NULL, " ");
+		if (arg2 == NULL) {
+			printf("%s\n", "Memory Scan: Please input address");
+			return 0;
+		}
+
+		// get the number of bytes
+		sscanf(arg1, "%d", &n);
+		word_t addr = expr(arg2, &success);
+		uint8_t *host_addr = guest_to_host(addr);
+
+		for (int i = 0; i < 4 * n; i++) {
+			printf("%02x ", host_addr[i]);
+			if (i % 4 == 3)
+				printf("\n");
+		}
+		printf("\n");
+	}
+	return 0;
 }
 
-static int cmd_d(char* args) {
-  if (args == NULL) {
-    printf("Please input watchpoint index to delete\n");
-    return 0;
-  }
-  int index;
-  sscanf(args, "%d", &index);
-  printf("Delete watchpoint %d\n", index);
-  WP* wp = get_wp(index);
-  if (wp == NULL) {
-    printf("Watchpoint %d does not exist\n", index);
-    return 0;
-  }
-  free_wp(wp);
-  return 0;
+static int cmd_w(char *args) {
+	if (args == NULL) {
+		printf("Please input expr for watchpoints\n");
+		return 0;
+	}
+	WP *wp = new_wp();
+	bool success = true;
+	strcpy(wp->str, args);
+	wp->value = expr(args, &success);
+	return 0;
+}
+
+static int cmd_d(char *args) {
+	if (args == NULL) {
+		printf("Please input watchpoint index to delete\n");
+		return 0;
+	}
+	int index;
+	sscanf(args, "%d", &index);
+	printf("Delete watchpoint %d\n", index);
+	WP *wp = get_wp(index);
+	if (wp == NULL) {
+		printf("Watchpoint %d does not exist\n", index);
+		return 0;
+	}
+	free_wp(wp);
+	return 0;
 }
 
 static struct {
-  const char *name;
-  const char *description;
-  int (*handler) (char *);
-} cmd_table [] = {
-  { "help", "Display information about all supported commands", cmd_help },
-  { "c", "Continue the execution of the program", cmd_c },
-  { "q", "Exit NEMU", cmd_q },
-  { "si",   "Execute N instructions then pause (default N=1)", cmd_si },
-  { "info", "Print register status or watchpoint information (info r|w)", cmd_info },
-  { "x",    "Scan memory: x N EXPR - Display N*4 bytes from address EXPR", cmd_x },
-  { "p",    "Evaluate expression: p EXPR - Calculate value of EXPR", cmd_expr },
-  { "w",    "Set watchpoint: w EXPR - Pause when EXPR value changes", cmd_w },
-  { "d",    "Delete watchpoint: d N - Remove watchpoint number N", cmd_d }
-  /* TODO: Add more commands */
+	const char *name;
+	const char *description;
+	int (*handler)(char *);
+} cmd_table[] = {
+	{"help", "Display information about all supported commands", cmd_help},
+	{"c", "Continue the execution of the program", cmd_c},
+	{"q", "Exit NEMU", cmd_q},
+	{"si", "Execute N instructions then pause (default N=1)", cmd_si},
+	{"info", "Print register status or watchpoint information (info r|w)",
+	 cmd_info},
+	{"x", "Scan memory: x N EXPR - Display N*4 bytes from address EXPR", cmd_x},
+	{"p", "Evaluate expression: p EXPR - Calculate value of EXPR", cmd_expr},
+	{"w", "Set watchpoint: w EXPR - Pause when EXPR value changes", cmd_w},
+	{"d", "Delete watchpoint: d N - Remove watchpoint number N", cmd_d}
+	/* TODO: Add more commands */
 
 };
 
 #define NR_CMD ARRLEN(cmd_table)
 
 static int cmd_help(char *args) {
-  /* extract the first argument */
-  char *arg = strtok(NULL, " ");
-  int i;
+	/* extract the first argument */
+	char *arg = strtok(NULL, " ");
+	int i;
 
-  if (arg == NULL) {
-    /* no argument given */
-    for (i = 0; i < NR_CMD; i ++) {
-      printf("%s - %s\n", cmd_table[i].name, cmd_table[i].description);
-    }
-  }
-  else {
-    for (i = 0; i < NR_CMD; i ++) {
-      if (strcmp(arg, cmd_table[i].name) == 0) {
-        printf("%s - %s\n", cmd_table[i].name, cmd_table[i].description);
-        return 0;
-      }
-    }
-    printf("Unknown command '%s'\n", arg);
-  }
-  return 0;
+	if (arg == NULL) {
+		/* no argument given */
+		for (i = 0; i < NR_CMD; i++) {
+			printf("%s - %s\n", cmd_table[i].name, cmd_table[i].description);
+		}
+	} else {
+		for (i = 0; i < NR_CMD; i++) {
+			if (strcmp(arg, cmd_table[i].name) == 0) {
+				printf("%s - %s\n", cmd_table[i].name,
+					   cmd_table[i].description);
+				return 0;
+			}
+		}
+		printf("Unknown command '%s'\n", arg);
+	}
+	return 0;
 }
 
-void sdb_set_batch_mode() {
-  is_batch_mode = true;
-}
+void sdb_set_batch_mode() { is_batch_mode = true; }
 
 void sdb_mainloop() {
-  //see parse_args in monitor/monitor.c
-  //In normal case, the value of is_batch_mode is false
-  if (is_batch_mode) {
-    cmd_c(NULL);
-    return;
-  }
+	// see parse_args in monitor/monitor.c
+	// In normal case, the value of is_batch_mode is false
+	if (is_batch_mode) {
+		cmd_c(NULL);
+		return;
+	}
 
-  for (char *str; (str = rl_gets()) != NULL; ) {
-    char *str_end = str + strlen(str);
+	for (char *str; (str = rl_gets()) != NULL;) {
+		char *str_end = str + strlen(str);
 
-    /* extract the first token as the command */
-    char *cmd = strtok(str, " ");
-    if (cmd == NULL) { continue; }
+		/* extract the first token as the command */
+		char *cmd = strtok(str, " ");
+		if (cmd == NULL) {
+			continue;
+		}
 
-    /* treat the remaining string as the arguments,
-     * which may need further parsing
-     */
-    char *args = cmd + strlen(cmd) + 1;
-    if (args >= str_end) {
-      args = NULL;
-    }
+		/* treat the remaining string as the arguments,
+		 * which may need further parsing
+		 */
+		char *args = cmd + strlen(cmd) + 1;
+		if (args >= str_end) {
+			args = NULL;
+		}
 
 #ifdef CONFIG_DEVICE
-    extern void sdl_clear_event_queue();
-    sdl_clear_event_queue();
+		extern void sdl_clear_event_queue();
+		sdl_clear_event_queue();
 #endif
 
-    int i;
-    for (i = 0; i < NR_CMD; i ++) {
-      if (strcmp(cmd, cmd_table[i].name) == 0) {
-        // 正常情况下应该返回0,如果返回-1则会退出
-        if (cmd_table[i].handler(args) < 0) { return; }
-        break;
-      }
-    }
+		int i;
+		for (i = 0; i < NR_CMD; i++) {
+			if (strcmp(cmd, cmd_table[i].name) == 0) {
+				// 正常情况下应该返回0,如果返回-1则会退出
+				if (cmd_table[i].handler(args) < 0) {
+					return;
+				}
+				break;
+			}
+		}
 
-    if (i == NR_CMD) { printf("Unknown command '%s'\n", cmd); }
-  }
+		if (i == NR_CMD) {
+			printf("Unknown command '%s'\n", cmd);
+		}
+	}
 }
 
 void init_sdb() {
-  /* Compile the regular expressions. */
-  init_regex();
+	/* Compile the regular expressions. */
+	init_regex();
 
-  /* Initialize the watchpoint pool. */
-  init_wp_pool();
+	/* Initialize the watchpoint pool. */
+	init_wp_pool();
 }

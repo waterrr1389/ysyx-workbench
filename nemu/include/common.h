@@ -54,8 +54,7 @@
 #if defined(CONFIG_ISA64)
   #define FMT_WORD "0x%016" PRIx64
 #elif defined(CONFIG_ISA_GB)
-  // Game Boy 专用：16位宽，用 %04x
-  // 注意：在 printf 中 uint16_t 会自动提升为 int，所以用 %x 是安全的
+  // Game Boy ：16位宽，%04x
   #define FMT_WORD "0x%04x"
 #else
   // 默认情况 (x86, riscv32, mips32)：32位宽

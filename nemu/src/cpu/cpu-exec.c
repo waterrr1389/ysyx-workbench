@@ -13,12 +13,12 @@
  * See the Mulan PSL v2 for more details.
  ***************************************************************************************/
 
-#include "../monitor/sdb/watchpoint.h"
 #include "utils.h"
 #include <cpu/cpu.h>
 #include <cpu/decode.h>
 #include <cpu/difftest.h>
 #include <locale.h>
+#include <readline/readline.h>
 #include <stdint.h>
 
 /* The assembly code of instructions executed is only output to the screen
@@ -34,11 +34,15 @@ static uint64_t g_timer = 0; // unit: us
 static bool g_print_step = false;
 
 void device_update();
+void iRingBufferWrite(const void *data, size_t len);
+void iRingBufferDump();
+void ftrace(word_t pc);
+void check_watchpoints();
 
 static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
 #ifdef CONFIG_ITRACE_COND
   if (ITRACE_COND) {
-    log_write("%s\n", _this->logbuf);
+    log_write("%s\n", _this->logbuf); // 写入到启动时指定的log文件,默认为nemu-log.txt
   }
 #endif
   if (g_print_step) {
@@ -46,8 +50,12 @@ static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
   }
   IFDEF(CONFIG_DIFFTEST, difftest_step(_this->pc, dnpc));
 
+  #ifdef CONFIG_FTRACE
+    ftrace(dnpc);
+  #endif
+
   #ifdef CONFIG_WATCHPOINT
-  check_watchpoints();
+  	check_watchpoints();
   #endif
 }
 
@@ -65,22 +73,23 @@ static void exec_once(Decode *s, vaddr_t pc) {
 #ifdef CONFIG_ISA_x86
   for (i = 0; i < ilen; i++) {
 #else
-  for (i = ilen - 1; i >= 0; i--) {
+  for (i = ilen - 1; i >= 0; i--) { // 以小端序输出指令
 #endif
     p += snprintf(p, 4, " %02x", inst[i]);
   }
   int ilen_max = MUXDEF(CONFIG_ISA_x86, 8, 4);
-  int space_len = ilen_max - ilen;
+  int space_len = ilen_max - ilen; // space_len空格长度
   if (space_len < 0)
     space_len = 0;
-  space_len = space_len * 3 + 1;
+  space_len = space_len * 3 + 1; // 对于RV来说,space=1
   memset(p, ' ', space_len);
   p += space_len;
 
   void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
-  disassemble(p, s->logbuf + sizeof(s->logbuf) - p,
-              MUXDEF(CONFIG_ISA_x86, s->snpc, s->pc), (uint8_t *)&s->isa.inst,
-              ilen);
+  int disassemble_size = s->logbuf + sizeof(s->logbuf) - p;
+  disassemble(p, disassemble_size, MUXDEF(CONFIG_ISA_x86, s->snpc, s->pc),
+	      (uint8_t *)&s->isa.inst, ilen);
+  iRingBufferWrite(p, disassemble_size);
 #endif
 }
 
@@ -150,8 +159,9 @@ void cpu_exec(uint64_t n) {
                     ? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN)
                     : ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED))),
         nemu_state.halt_pc);
-    // fall through
   case NEMU_QUIT:
     statistic();
+	iRingBufferDump();
+    ftrace(cpu.pc);
   }
 }

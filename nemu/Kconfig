@@ -112,6 +112,10 @@ config EXPR
   bool "expr-test"
   default n
 
+config FTRACE
+  bool "ftrace"
+  default n
+
 config WATCHPOINT
   bool "watchpoint"
   default n
