@@ -1,4 +1,5 @@
 #include "ftrace.h"
+#include "debug.h"
 
 static Elf_Shdr symtab, strtab;
 static FILE* fp;
@@ -17,7 +18,15 @@ void readelf(const char* path) {
     Elf_Ehdr Ehdr;
     number = fread((void*)&Ehdr, sizeof(Elf_Ehdr), 1, fp);
     Assert(number == 1, "%s\n", "Faield to read offset"); 
-    
+    // Check magic number
+    unsigned char* ident = Ehdr.e_ident;
+    Assert(ident[0] == 0x7f &&
+           ident[1] == 'E' &&
+           ident[2] == 'L' &&
+           ident[3] == 'F', 
+           "%s\n",
+           "ERROR: Invalid ELF file");
+
     // Seek to section header table
     number = fseek(fp,Ehdr.e_shoff, SEEK_SET);
     Assert(number == 0, "%s\n", "Failed to direct to section table");
