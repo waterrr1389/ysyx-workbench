@@ -42,7 +42,8 @@ void check_watchpoints();
 static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
 #ifdef CONFIG_ITRACE_COND
   if (ITRACE_COND) {
-    log_write("%s\n", _this->logbuf); // 写入到启动时指定的log文件,默认为nemu-log.txt
+    log_write("%s\n",
+              _this->logbuf); // 写入到启动时指定的log文件,默认为nemu-log.txt
   }
 #endif
   if (g_print_step) {
@@ -50,13 +51,9 @@ static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
   }
   IFDEF(CONFIG_DIFFTEST, difftest_step(_this->pc, dnpc));
 
-  #ifdef CONFIG_FTRACE
-    ftrace(dnpc);
-  #endif
-
-  #ifdef CONFIG_WATCHPOINT
-  	check_watchpoints();
-  #endif
+#ifdef CONFIG_WATCHPOINT
+  check_watchpoints();
+#endif
 }
 
 static void exec_once(Decode *s, vaddr_t pc) {
@@ -88,7 +85,7 @@ static void exec_once(Decode *s, vaddr_t pc) {
   void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
   int disassemble_size = s->logbuf + sizeof(s->logbuf) - p;
   disassemble(p, disassemble_size, MUXDEF(CONFIG_ISA_x86, s->snpc, s->pc),
-	      (uint8_t *)&s->isa.inst, ilen);
+              (uint8_t *)&s->isa.inst, ilen);
   iRingBufferWrite(p, disassemble_size);
 #endif
 }
@@ -126,7 +123,7 @@ void assert_fail_msg() {
 /* Simulate how the CPU works. */
 void cpu_exec(uint64_t n) {
   g_print_step = (n < MAX_INST_TO_PRINT);
-  
+
   switch (nemu_state.state) {
   case NEMU_END:
   case NEMU_ABORT:
@@ -161,7 +158,7 @@ void cpu_exec(uint64_t n) {
         nemu_state.halt_pc);
   case NEMU_QUIT:
     statistic();
-	// iRingBufferDump();
+    // iRingBufferDump();
     // ftrace(cpu.pc);
   }
 }
