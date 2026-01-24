@@ -13,6 +13,7 @@
  * See the Mulan PSL v2 for more details.
  ***************************************************************************************/
 
+#include "../../monitor/sdb/ftrace.h"
 #include "capstone/arm.h"
 #include "local-include/reg.h"
 #include <cpu/cpu.h>
@@ -66,21 +67,22 @@ enum {
             (BITS(i, 11, 8) << 1) | (BITS(i, 7, 7) << 11));                    \
   } while (0)
 
-#ifdef FTRACE
-#define RECORD_FTRACE(target)                                                  \
-  if (rd == 1) {                                                               \
-// call
-call_record(target);
-}
-else if (rd == 0) {
-  // ret
-  ret_recored(target);
-}
-else {
-  Log("ftrace: invalid function call or return?");
-}
+#ifdef CONFIG_FTRACE
+#define RECORD_FTRACE(pc, dst)                                                 \
+  do {                                                                         \
+    if (rd == 1) {                                                             \
+      /* call */                                                               \
+      call_record(pc, dst);                                                    \
+    } else if (rd == 0) {                                                      \
+      /* ret */                                                                \
+      ret_record(pc);                                                          \
+    } else {                                                                   \
+      /* Log("ftrace: invalid..."); */                                         \
+    }                                                                          \
+  } while (0)
 #else
-#define RECORD_FTRACE(target)
+// 必须接受两个参数，即使不做任何事
+#define RECORD_FTRACE(pc, dst) ((void)0)
 #endif
 
 static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2,
@@ -214,15 +216,16 @@ static int decode_exec(Decode *s) {
           if ((int)src1 >= (int)src2) s->dnpc = s->pc + imm);
   INSTPAT("??????? ????? ????? 111 ????? 11000 11", bgeu, B,
           if (src1 >= src2) s->dnpc = s->pc + imm);
-  INSTPAT("??JetBriainsMono Nerd Font????? ????? ????? 000 ????? 11000 11", beq, B,
+  INSTPAT("??JetBriainsMono Nerd Font????? ????? ????? 000 ????? 11000 11", beq,
+          B,
           if (src1 == src2) s->dnpc = s->pc + imm); //
   INSTPAT("??????? ????? ????? 001 ????? 11000 11", bne, B,
           if (src1 != src2) s->dnpc = s->pc + imm);
   INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal, J,
           s->dnpc = s->pc + imm;
-          R(rd) = s->snpc; RECORD_FTRACE(s->dnpc););
+          R(rd) = s->snpc; RECORD_FTRACE(s->pc, s->dnpc););
   INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr, I, R(rd) = s->snpc;
-          s->dnpc = (src1 + imm) & ~1UL; RECORD_FTRACE(s->dnpc););
+          s->dnpc = (src1 + imm) & ~1UL; RECORD_FTRACE(s->pc, s->dnpc););
   INSTPAT("0000001 ????? ????? 000 ????? 01100 11", mul, R,
           R(rd) = src1 * src2);
   INSTPAT("0000001 ????? ????? 001 ????? 01100 11", mulh, R,
