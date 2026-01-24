@@ -73,7 +73,7 @@ enum {
     if (rd == 1) {                                                             \
       /* call */                                                               \
       call_record(pc, dst);                                                    \
-    } else if (rd == 0) {                                                      \
+    } else if (rd == 0 && src1 == 1) {                                         \
       /* ret */                                                                \
       ret_record(pc);                                                          \
     } else {                                                                   \
