@@ -1,8 +1,10 @@
 #include "ftrace.h"
+#include "callstack.h"
 #include "debug.h"
 
 static Elf_Shdr symtab, strtab;
 static FILE *fp;
+int32_t symtab_count;
 static char *strtab_buf;
 static Elf_Sym *symbols;
 
@@ -52,10 +54,13 @@ void readelf(const char *path) {
   fread(strtab_buf, strtab.sh_size, 1, fp);
 
   // Alloccate memory for symbol table
-  uint32_t symtab_count = symtab.sh_size / sizeof(Elf_Sym);
+  symtab_count = symtab.sh_size / sizeof(Elf_Sym);
   symbols = malloc(symtab_count * sizeof(Elf_Sym));
   fseek(fp, symtab.sh_offset, SEEK_SET);
   fread(symbols, sizeof(Elf_Sym), symtab_count, fp);
+
+  // Initialize Call Stack
+  init_stack();
 }
 
 // implement ftrace
@@ -66,6 +71,74 @@ void ftrace(word_t pc) {
          symtab.sh_offset, strtab.sh_offset);
 }
 
-void call_record(word_t addr) {}
+void get_func_name(char *func_name, word_t addr) {
+  if (symbols == NULL || strtab_buf == NULL)
+    return;
 
-void ret_record(word_t addr) {}
+  for (size_t i = 0; i < symtab_count; i++) {
+    // 获取当前符号的类型
+    // 注意：根据 ISA64 配置，Elf_Sym 可能是 Elf32_Sym 或 Elf64_Sym
+    // 它们的 st_info 字段位置一样，我们可以用统一的宏处理
+    unsigned char info = symbols[i].st_info;
+
+    // 检查符号类型是否为函数 (STT_FUNC)
+    if (ELF64_ST_TYPE(info) == STT_FUNC) {
+      Elf_Addr value = symbols[i].st_value;
+      Elf_Xword size = symbols[i].st_size;
+
+      // 检查地址是否在这个函数的范围内
+      if (addr >= value && addr < (value + size)) {
+        // 找到了！从字符串表中获取名字
+        // st_name 是字符串在 strtab 中的偏移量
+        const char *name = strtab_buf + symbols[i].st_name;
+
+        // 安全复制防止缓冲区溢出
+        strncpy(func_name, name, FUNC_LENGH - 1);
+        func_name[FUNC_LENGH - 1] = '\0'; // 确保结尾
+        return;
+      }
+    }
+  }
+  // 如果没找到，可以填一个 unknown 或者不处理
+  strncpy(func_name, "???", FUNC_LENGH - 1);
+}
+
+void print_indent(int depth) {
+  for (int i = 0; i < depth; i++)
+    printf("  ");
+}
+
+void call_record(word_t addr, word_t dst) {
+  char func_name[FUNC_LENGH] = {0};
+
+  // 1. 解析目标地址的函数名
+  get_func_name(func_name, dst);
+
+  // 2. 打印追踪日志
+  int depth = get_stack_depth();
+  print_indent(depth);
+  // 这里的 addr 是 jal 指令的地址 (pc)
+  // dst 是跳转的目标地址
+  printf("0x%lx: call [%s@0x%lx]\n", (unsigned long)addr, func_name,
+         (unsigned long)dst);
+
+  // 3. 将调用信息入栈
+  stack_push(addr, dst, func_name);
+}
+
+void ret_record(word_t addr) {
+  // addr 是 ret 指令 (jalr x0, 0(ra)) 的地址
+  // 1. 获取当前栈顶函数名 (也就是我们正在返回的函数)
+  CallStackNode *stack_top = get_stack_top();
+  const char *func_name = (stack_top) ? stack_top->func_name : "???";
+
+  // 2. 打印返回日志
+  int depth = get_stack_depth();
+  if (depth > 0)
+    depth--; // 返回时缩进减少一级
+  print_indent(depth);
+  printf("0x%lx: ret  [%s]\n", (unsigned long)addr, func_name);
+
+  // 3. 出栈
+  stack_pop();
+}

@@ -2,6 +2,13 @@
 #include <common.h>
 #define SHT_SYMTAB	  2		/* Symbol table */
 #define SHT_STRTAB	  3		/* String table */
+#define STT_FUNC	2		/* Symbol is a code object */
+
+#define FUNC_LENGH 64
+
+// 用于提取符号信息的宏
+#define ELF32_ST_TYPE(i) ((i)&0xf)
+#define ELF64_ST_TYPE(i) ((i)&0xf)
 
 /* Type for a 16-bit quantity.  */
 typedef uint16_t Elf32_Half;
@@ -134,6 +141,7 @@ typedef struct
     typedef Elf64_Off  Elf_Off;
     typedef Elf64_Addr Elf_Addr;
     typedef Elf64_Half Elf_Half;
+    typedef Elf64_Xword Elf_Xword;
 #else
     typedef Elf32_Ehdr Elf_Ehdr;
     typedef Elf32_Shdr Elf_Shdr;
@@ -141,6 +149,7 @@ typedef struct
     typedef Elf32_Off  Elf_Off;
     typedef Elf32_Addr Elf_Addr;
     typedef Elf32_Half Elf_Half;
+    typedef Elf32_Xword Elf_Xword;
 #endif
 
 void ftrace(word_t pc); 
