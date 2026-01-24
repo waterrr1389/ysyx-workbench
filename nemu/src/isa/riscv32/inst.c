@@ -67,22 +67,36 @@ enum {
             (BITS(i, 11, 8) << 1) | (BITS(i, 7, 7) << 11));                    \
   } while (0)
 
+#define get_rs1(i)                                                             \
+  do {                                                                         \
+    rs1 = BITS(i, 19, 15);                                                     \
+  } while (0)
+
 #ifdef CONFIG_FTRACE
-#define RECORD_FTRACE(pc, dst)                                                 \
+#define JALR_CASE(pc, dst)                                                     \
   do {                                                                         \
     if (rd == 1) {                                                             \
       /* call */                                                               \
       call_record(pc, dst);                                                    \
-    } else if (rd == 0) {                                                      \
+    } else if (rd == 0 && rs1 == 1) {                                          \
       /* ret */                                                                \
       ret_record(pc);                                                          \
     } else {                                                                   \
       /* Log("ftrace: invalid..."); */                                         \
     }                                                                          \
   } while (0)
+#define JAL_CASE(pc, dst)                                                      \
+  do {                                                                         \
+    if (rd == 1) {                                                             \
+      /* call */                                                               \
+      call_record(pc, dst);                                                    \
+    } else {                                                                   \
+      /* Log("ftrace: invalid..."); */                                         \
+    }                                                                          \
+  } while (0)
 #else
-// 必须接受两个参数，即使不做任何事
-#define RECORD_FTRACE(pc, dst) ((void)0)
+#define JALR_CASE(pc, dst) ((void)0)
+#define JAL_CASE(pc, dst) ((void)0)
 #endif
 
 static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2,
@@ -222,9 +236,10 @@ static int decode_exec(Decode *s) {
           if (src1 != src2) s->dnpc = s->pc + imm);
   INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal, J,
           s->dnpc = s->pc + imm;
-          R(rd) = s->snpc; RECORD_FTRACE(s->pc, s->dnpc););
+          R(rd) = s->snpc; JAL_CASE(s->pc, s->dnpc););
   INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr, I, R(rd) = s->snpc;
-          s->dnpc = (src1 + imm) & ~1UL; RECORD_FTRACE(s->pc, s->dnpc););
+          s->dnpc = (src1 + imm) & ~1UL; word_t rs1; get_rs1(s->isa.inst);
+          JALR_CASE(s->pc, s->dnpc););
   INSTPAT("0000001 ????? ????? 000 ????? 01100 11", mul, R,
           R(rd) = src1 * src2);
   INSTPAT("0000001 ????? ????? 001 ????? 01100 11", mulh, R,
