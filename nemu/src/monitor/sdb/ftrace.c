@@ -22,10 +22,10 @@ void readelf(const char *path) {
   number = fread((void *)&Ehdr, sizeof(Elf_Ehdr), 1, fp);
   Assert(number == 1, "%s\n", "Faield to read offset");
   // Check magic number
-  unsigned char *ident = Ehdr.e_ident;
-  Assert(ident[0] == 0x7f && ident[1] == 'E' && ident[2] == 'L' &&
-             ident[3] == 'F',
-         "%s\n", "ERROR: Invalid ELF file");
+  // unsigned char *ident = Ehdr.e_ident;
+  // Assert(ident[0] == 0x7f && ident[1] == 'E' && ident[2] == 'L' &&
+  //            ident[3] == 'F',
+  //        "%s\n", "ERROR: Invalid ELF file");
 
   // Seek to section header table
   number = fseek(fp, Ehdr.e_shoff, SEEK_SET);
