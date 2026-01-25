@@ -146,5 +146,5 @@ typedef Elf32_Xword Elf_Xword;
 #endif
 
 void ftrace(word_t pc);
-void call_record(word_t addr, word_t dst);
-void ret_record(word_t addr);
+void call_record(word_t pc, word_t dst);
+void ret_record(word_t pc);
