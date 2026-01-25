@@ -108,7 +108,7 @@ void print_indent(int depth) {
     printf("  ");
 }
 
-void call_record(word_t addr, word_t dst) {
+void call_record(word_t pc, word_t dst) {
   char func_name[FUNC_LENGH] = {0};
 
   // 1. 解析目标地址的函数名
@@ -117,17 +117,17 @@ void call_record(word_t addr, word_t dst) {
   // 2. 打印追踪日志
   int depth = get_stack_depth();
   print_indent(depth);
-  // 这里的 addr 是 jal 指令的地址 (pc)
+  // 这里的 pc 是 jal 指令的地址
   // dst 是跳转的目标地址
-  printf("0x%lx: call [%s@0x%lx]\n", (unsigned long)addr, func_name,
+  printf("0x%lx: call [%s@0x%lx]\n", (unsigned long)pc, func_name,
          (unsigned long)dst);
 
   // 3. 将调用信息入栈
-  stack_push(addr, dst, func_name);
+  stack_push(pc, dst, func_name);
 }
 
-void ret_record(word_t addr) {
-  // addr 是 ret 指令 (jalr x0, 0(ra)) 的地址
+void ret_record(word_t pc) {
+  // pc 是 ret 指令 (jalr x0, 0(ra)) 的地址
   // 1. 获取当前栈顶函数名 (也就是我们正在返回的函数)
   CallStackNode *stack_top = get_stack_top();
   const char *func_name = (stack_top) ? stack_top->func_name : "???";
@@ -137,7 +137,7 @@ void ret_record(word_t addr) {
   if (depth > 0)
     depth--; // 返回时缩进减少一级
   print_indent(depth);
-  printf("0x%lx: ret  [%s]\n", (unsigned long)addr, func_name);
+  printf("0x%lx: ret  [%s]\n", (unsigned long)pc, func_name);
 
   // 3. 出栈
   stack_pop();
