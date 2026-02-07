@@ -75,14 +75,13 @@ enum {
 #ifdef CONFIG_FTRACE
 #define JALR_CASE(pc, dst)                                                     \
   do {                                                                         \
-    if (rd == 1) {                                                             \
-      /* call */                                                               \
+    word_t rs1;                                                                \
+    get_rs1(s->isa.inst);                                                      \
+    if (rd == 1) { /* call */                                                  \
       call_record(pc, dst);                                                    \
-    } else if (rd == 0 && rs1 == 1) {                                          \
-      /* ret */                                                                \
+    } else if (rd == 0 && rs1 == 1) { /* ret */                                \
       ret_record(pc);                                                          \
-    } else {                                                                   \
-      /* Log("ftrace: invalid..."); */                                         \
+    } else { /* Log("ftrace: invalid..."); */                                  \
     }                                                                          \
   } while (0)
 #define JAL_CASE(pc, dst)                                                      \
@@ -238,8 +237,7 @@ static int decode_exec(Decode *s) {
           s->dnpc = s->pc + imm;
           R(rd) = s->snpc; JAL_CASE(s->pc, s->dnpc););
   INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr, I, R(rd) = s->snpc;
-          s->dnpc = (src1 + imm) & ~1UL; word_t rs1; get_rs1(s->isa.inst);
-          JALR_CASE(s->pc, s->dnpc););
+          s->dnpc = (src1 + imm) & ~1UL; JALR_CASE(s->pc, s->dnpc););
   INSTPAT("0000001 ????? ????? 000 ????? 01100 11", mul, R,
           R(rd) = src1 * src2);
   INSTPAT("0000001 ????? ????? 001 ????? 01100 11", mulh, R,
