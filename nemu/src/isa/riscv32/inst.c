@@ -14,7 +14,6 @@
  ***************************************************************************************/
 
 #include "../../monitor/sdb/ftrace.h"
-#include "capstone/arm.h"
 #include "local-include/reg.h"
 #include <cpu/cpu.h>
 #include <cpu/decode.h>
