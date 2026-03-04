@@ -116,8 +116,7 @@ int main(int argc, char** argv) {
 
 	sim_init();
 
-	int cycles= 50;
-	while (cycles--) {
+	while (sim) {
 		step_one_cycle();
 	}
 
