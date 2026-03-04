@@ -4,51 +4,14 @@
 #include "verilated_fst_c.h"
 
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 
 namespace {
 constexpr uint32_t kMbase = 0x80000000u;
 constexpr uint32_t kNopInst = 0x00000013u;
-constexpr uint32_t kBuiltinImg[] = {
-    // 为了证明清除效果，我们先故意把几个寄存器弄脏 (设置成非0值)
-    0x00100093, // addi x1, x0, 1   (x1 = 1)
-    0x00200113, // addi x2, x0, 2   (x2 = 2)
-    0x00300f93, // addi x31, x0, 3  (x31 = 3)
-
-    // --- 开始清理 (Clear x1 - x31) ---
-    // 机器码生成公式: (rd << 7) | 0x13
-    0x00000093, // addi x1,  x0, 0
-    0x00000113, // addi x2,  x0, 0
-    0x00000193, // addi x3,  x0, 0
-    0x00000213, // addi x4,  x0, 0
-    0x00000293, // addi x5,  x0, 0
-    0x00000313, // addi x6,  x0, 0
-    0x00000393, // addi x7,  x0, 0
-    0x00000413, // addi x8,  x0, 0
-    0x00000493, // addi x9,  x0, 0
-    0x00000513, // addi x10, x0, 0
-    0x00000593, // addi x11, x0, 0
-    0x00000613, // addi x12, x0, 0
-    0x00000693, // addi x13, x0, 0
-    0x00000713, // addi x14, x0, 0
-    0x00000793, // addi x15, x0, 0
-    0x00000813, // addi x16, x0, 0
-    0x00000893, // addi x17, x0, 0
-    0x00000913, // addi x18, x0, 0
-    0x00000993, // addi x19, x0, 0
-    0x00000a13, // addi x20, x0, 0
-    0x00000a93, // addi x21, x0, 0
-    0x00000b13, // addi x22, x0, 0
-    0x00000b93, // addi x23, x0, 0
-    0x00000c13, // addi x24, x0, 0
-    0x00000c93, // addi x25, x0, 0
-    0x00000d13, // addi x26, x0, 0
-    0x00000d93, // addi x27, x0, 0
-    0x00000e13, // addi x28, x0, 0
-    0x00000e93, // addi x29, x0, 0
-    0x00000f13, // addi x30, x0, 0
-    0x00000f93, // addi x31, x0, 0
-    0x00100073  // ebreak
-};
+uint32_t *g_inst_img = nullptr;
+size_t g_inst_img_size = 0;
 
 Vtop *top = nullptr;
 VerilatedContext *contextp = nullptr;
@@ -57,13 +20,86 @@ bool sim_running = false;
 
 int pc_to_index(uint32_t pc) { return static_cast<int>((pc - kMbase) / 4u); }
 
+bool load_inst_img(const char *img_path) {
+  FILE *img_file = fopen(img_path, "rb");
+  if (img_file == nullptr) {
+    fprintf(stderr, "Failed to open instruction file: %s\n", img_path);
+    return false;
+  }
+
+  if (fseek(img_file, 0, SEEK_END) != 0) {
+    fprintf(stderr, "Failed to seek instruction file: %s\n", img_path);
+    fclose(img_file);
+    return false;
+  }
+
+  const long file_size = ftell(img_file);
+  if (file_size <= 0) {
+    fprintf(stderr, "Instruction file is empty: %s\n", img_path);
+    fclose(img_file);
+    return false;
+  }
+
+  if (fseek(img_file, 0, SEEK_SET) != 0) {
+    fprintf(stderr, "Failed to seek instruction file: %s\n", img_path);
+    fclose(img_file);
+    return false;
+  }
+
+  if ((file_size % 4) != 0) {
+    fprintf(stderr, "Instruction file size must be a multiple of 4 bytes: %s\n",
+            img_path);
+    fclose(img_file);
+    return false;
+  }
+
+  uint8_t *raw_data =
+      static_cast<uint8_t *>(malloc(static_cast<size_t>(file_size)));
+  if (raw_data == nullptr) {
+    fprintf(stderr, "Failed to allocate memory for instruction file: %s\n",
+            img_path);
+    fclose(img_file);
+    return false;
+  }
+
+  const size_t read_bytes =
+      fread(raw_data, 1, static_cast<size_t>(file_size), img_file);
+  fclose(img_file);
+  if (read_bytes != static_cast<size_t>(file_size)) {
+    fprintf(stderr, "Failed to read instruction file: %s\n", img_path);
+    free(raw_data);
+    return false;
+  }
+
+  free(g_inst_img);
+  g_inst_img =
+      static_cast<uint32_t *>(malloc(static_cast<size_t>(file_size)));
+  if (g_inst_img == nullptr) {
+    fprintf(stderr, "Failed to allocate instruction image: %s\n", img_path);
+    free(raw_data);
+    return false;
+  }
+
+  g_inst_img_size = static_cast<size_t>(file_size) / 4u;
+  for (size_t i = 0; i < g_inst_img_size; ++i) {
+    const size_t byte_index = i * 4u;
+    const uint32_t inst = static_cast<uint32_t>(raw_data[byte_index]) |
+                          (static_cast<uint32_t>(raw_data[byte_index + 1]) << 8u) |
+                          (static_cast<uint32_t>(raw_data[byte_index + 2]) << 16u) |
+                          (static_cast<uint32_t>(raw_data[byte_index + 3]) << 24u);
+    g_inst_img[i] = inst;
+  }
+  free(raw_data);
+
+  return true;
+}
+
 void fetch_inst() {
   const int index = pc_to_index(top->pc);
-  const int img_size =
-      static_cast<int>(sizeof(kBuiltinImg) / sizeof(kBuiltinImg[0]));
+  const int img_size = static_cast<int>(g_inst_img_size);
 
   if (index >= 0 && index < img_size) {
-    top->inst = kBuiltinImg[index];
+    top->inst = g_inst_img[index];
     return;
   }
 
@@ -122,12 +158,20 @@ void sim_exit() {
   top = nullptr;
   delete contextp;
   contextp = nullptr;
+  free(g_inst_img);
+  g_inst_img = nullptr;
+  g_inst_img_size = 0;
   sim_running = false;
 }
 
 int main(int argc, char **argv) {
-  (void)argc;
-  (void)argv;
+  if (argc < 2) {
+    fprintf(stderr, "Usage: %s <inst_file_path>\n", argv[0]);
+    return EXIT_FAILURE;
+  }
+  if (!load_inst_img(argv[1])) {
+    return EXIT_FAILURE;
+  }
 
   sim_init();
   while (is_sim_running()) {
