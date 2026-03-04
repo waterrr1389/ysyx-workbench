@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <stdint.h>
 #include "Vtop.h"
 #include "verilated.h"
 #include "verilated_fst_c.h"
 #include "dpi-c.h"
+#include "sim_main.h"
 
 #define MBASE 0x80000000
 
@@ -12,50 +14,37 @@ Vtop* top;
 VerilatedContext* contextp;
 VerilatedFstC* tfp;
 bool sim;
+static const char *img_file = NULL;
+static uint8_t *img_buf = NULL;
+static long img_size = 0;
 
-void __step_and_dump_wave();
+long load_img() {
+	if (img_file == NULL) {
+		fprintf(stderr, "Error: no image is given.\n");
+		exit(1);
+	}
 
-static const uint32_t img [] = {
-	// 为了证明清除效果，我们先故意把几个寄存器弄脏 (设置成非0值)
-	0x00100093, // addi x1, x0, 1   (x1 = 1)
-	0x00200113, // addi x2, x0, 2   (x2 = 2)
-	0x00300f93, // addi x31, x0, 3  (x31 = 3)
+	FILE *fp = fopen(img_file, "rb");
+	if (fp == NULL) {
+		fprintf(stderr, "Error: can not open '%s'\n", img_file);
+		exit(1);
+	}
 
-	// --- 开始清理 (Clear x1 - x31) ---
-	// 机器码生成公式: (rd << 7) | 0x13
-	0x00000093, // addi x1,  x0, 0
-	0x00000113, // addi x2,  x0, 0
-	0x00000193, // addi x3,  x0, 0
-	0x00000213, // addi x4,  x0, 0
-	0x00000293, // addi x5,  x0, 0
-	0x00000313, // addi x6,  x0, 0
-	0x00000393, // addi x7,  x0, 0
-	0x00000413, // addi x8,  x0, 0
-	0x00000493, // addi x9,  x0, 0
-	0x00000513, // addi x10, x0, 0
-	0x00000593, // addi x11, x0, 0
-	0x00000613, // addi x12, x0, 0
-	0x00000693, // addi x13, x0, 0
-	0x00000713, // addi x14, x0, 0
-	0x00000793, // addi x15, x0, 0
-	0x00000813, // addi x16, x0, 0
-	0x00000893, // addi x17, x0, 0
-	0x00000913, // addi x18, x0, 0
-	0x00000993, // addi x19, x0, 0
-	0x00000a13, // addi x20, x0, 0
-	0x00000a93, // addi x21, x0, 0
-	0x00000b13, // addi x22, x0, 0
-	0x00000b93, // addi x23, x0, 0
-	0x00000c13, // addi x24, x0, 0
-	0x00000c93, // addi x25, x0, 0
-	0x00000d13, // addi x26, x0, 0
-	0x00000d93, // addi x27, x0, 0
-	0x00000e13, // addi x28, x0, 0
-	0x00000e93, // addi x29, x0, 0
-	0x00000f13, // addi x30, x0, 0
-	0x00000f93, // addi x31, x0, 0
-  	0x00100073  // ebreak 
-};	
+	fseek(fp, 0, SEEK_END);
+	long size = ftell(fp);
+	assert(size >= 0);
+	fseek(fp, 0, SEEK_SET);
+
+	img_buf = (uint8_t *)malloc(size);
+	assert(img_buf != NULL);
+
+	size_t ret = fread(img_buf, 1, size, fp);
+	assert(ret == (size_t)size);
+	fclose(fp);
+
+	printf("The image is %s, size = %ld\n", img_file, size);
+	return size;
+}
 
 int getIndex(int pc) {
 	return (pc-MBASE) / 4;
@@ -63,17 +52,15 @@ int getIndex(int pc) {
 
 void fetch_inst() {
     int index = getIndex(top->pc);
-    
-    // 2. 增加安全检查 (这一步非常重要！)
-    // 计算数组元素的总数量
-    int max_size = sizeof(img) / sizeof(img[0]);
 
-    if (index >= 0 && index < max_size) {
+    long byte_index = (long)index * 4;
+    if (index >= 0 && byte_index + 4 <= img_size) {
 		printf("Current index is %d\n", index);
-        top->inst = img[index];
+        top->inst = (uint32_t)img_buf[byte_index] |
+                    ((uint32_t)img_buf[byte_index + 1] << 8) |
+                    ((uint32_t)img_buf[byte_index + 2] << 16) |
+                    ((uint32_t)img_buf[byte_index + 3] << 24);
 	} else {
-        // 如果 PC 超出范围（比如跑飞了，或者程序结束了）
-        // 喂入一个 NOP 指令 (addi x0, x0, 0)，防止仿真器读取非法内存崩溃
         top->inst = 0x00000013; 
 	}
 }
@@ -116,9 +103,17 @@ void sim_exit() {
 	tfp->close();
 	delete top;
 	delete contextp;
+	free(img_buf);
 }
 
 int main(int argc, char** argv) {
+	if (argc < 2) {
+		fprintf(stderr, "Usage: %s <image_file>\n", argv[0]);
+		return 1;
+	}
+	img_file = argv[1];
+	img_size = load_img();
+
 	sim_init();
 	
 	while (sim) {
