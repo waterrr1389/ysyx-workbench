@@ -1,8 +1,9 @@
+#include <stdio.h>
 #include "dpi-c.h"
-#include "sim_main.h"
+extern bool sim;
 
 void ebreak() {
-  stop_simulation();
+    sim = false;
 }
 
 // void display_reg(int regs[]) {

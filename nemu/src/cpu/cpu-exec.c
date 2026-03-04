@@ -18,6 +18,7 @@
 #include <cpu/decode.h>
 #include <cpu/difftest.h>
 #include <locale.h>
+#include <readline/readline.h>
 #include <stdint.h>
 
 /* The assembly code of instructions executed is only output to the screen
@@ -37,14 +38,6 @@ void iRingBufferWrite(const void *data, size_t len);
 void iRingBufferDump();
 void ftrace(word_t pc);
 void check_watchpoints();
-
-#ifdef CONFIG_ENGINE_JIT_IR
-uint64_t isa_exec_jit(uint64_t n);
-#endif
-
-#ifdef CONFIG_JIT_STATS
-void jit_print_stats(void);
-#endif
 
 static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
 #ifdef CONFIG_ITRACE_COND
@@ -99,26 +92,13 @@ static void exec_once(Decode *s, vaddr_t pc) {
 
 static void execute(uint64_t n) {
   Decode s;
-  while (n > 0) {
-#ifdef CONFIG_ENGINE_JIT_IR
-    uint64_t jit_nr = isa_exec_jit(n);
-    if (jit_nr > 0) {
-      g_nr_guest_inst += jit_nr;
-      n -= jit_nr;
-      if (nemu_state.state != NEMU_RUNNING) {
-        break;
-      }
-      continue;
-    }
-#endif
-
+  for (; n > 0; n--) {
     exec_once(&s, cpu.pc);
     g_nr_guest_inst++;
     trace_and_difftest(&s, cpu.pc);
     if (nemu_state.state != NEMU_RUNNING)
       break;
     IFDEF(CONFIG_DEVICE, device_update());
-    n--;
   }
 }
 
@@ -133,10 +113,6 @@ static void statistic() {
   else
     Log("Finish running in less than 1 us and can not calculate the simulation "
         "frequency");
-
-#ifdef CONFIG_JIT_STATS
-  jit_print_stats();
-#endif
 }
 
 void assert_fail_msg() {

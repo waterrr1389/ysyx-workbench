@@ -47,20 +47,11 @@ config ENGINE_INTERPRETER
   bool "Interpreter"
   help
     Interpreter guest instructions one by one.
-
-config ENGINE_JIT_IR
-  depends on ISA_riscv && !RV64 && TARGET_NATIVE_ELF
-  bool "JIT IR (riscv32, batch mode)"
-  help
-    Translate riscv32 instructions into a lightweight IR and execute
-    translated blocks. Unsupported instructions will fall back to
-    the interpreter.
 endchoice
 
 config ENGINE
   string
   default "interpreter" if ENGINE_INTERPRETER
-  default "jit" if ENGINE_JIT_IR
   default "none"
 
 choice
@@ -153,11 +144,6 @@ config CC_ASAN
 endmenu
 
 menu "Testing and Debugging"
-
-config JIT_STATS
-  depends on ENGINE_JIT_IR
-  bool "Enable JIT statistics"
-  default y
 
 
 config TRACE

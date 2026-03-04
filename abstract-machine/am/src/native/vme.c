@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
-#include "platform.h"
 #include <search.h>
+#include "platform.h"
 
 #define USER_SPACE RANGE(0x40000000, 0xc0000000)
 
@@ -10,7 +10,7 @@ typedef struct PageMap {
   struct PageMap *next;
   int prot;
   int is_mapped;
-  char key[32]; // used for hsearch_r()
+  char key[32];  // used for hsearch_r()
 } PageMap;
 
 typedef struct VMHead {
@@ -19,15 +19,15 @@ typedef struct VMHead {
   int nr_page;
 } VMHead;
 
-#define list_foreach(p, head)                                                  \
+#define list_foreach(p, head) \
   for (p = (PageMap *)(head); p != NULL; p = p->next)
 
 extern int __am_pgsize;
 static int vme_enable = 0;
-static void *(*pgalloc)(int) = NULL;
+static void* (*pgalloc)(int) = NULL;
 static void (*pgfree)(void *) = NULL;
 
-bool vme_init(void *(*pgalloc_f)(int), void (*pgfree_f)(void *)) {
+bool vme_init(void* (*pgalloc_f)(int), void (*pgfree_f)(void*)) {
   pgalloc = pgalloc_f;
   pgfree = pgfree_f;
   vme_enable = 1;
@@ -48,16 +48,15 @@ void protect(AddrSpace *as) {
   as->area = USER_SPACE;
 }
 
-void unprotect(AddrSpace *as) {}
+void unprotect(AddrSpace *as) {
+}
 
 void __am_switch(Context *c) {
-  if (!vme_enable)
-    return;
+  if (!vme_enable) return;
 
   VMHead *head = c->vm_head;
   VMHead *now_head = thiscpu->vm_head;
-  if (head == now_head)
-    goto end;
+  if (head == now_head) goto end;
 
   PageMap *pp;
   if (now_head != NULL) {
@@ -93,7 +92,7 @@ void map(AddrSpace *as, void *va, void *pa, int prot) {
   assert(vm_head != NULL);
   char buf[32];
   snprintf(buf, 32, "%x", va);
-  ENTRY item = {.key = buf};
+  ENTRY item = { .key = buf };
   ENTRY *item_find;
   hsearch_r(item, FIND, &item_find, &vm_head->hash);
   if (item_find == NULL) {
@@ -103,7 +102,7 @@ void map(AddrSpace *as, void *va, void *pa, int prot) {
     item.data = pp;
     int ret = hsearch_r(item, ENTER, &item_find, &vm_head->hash);
     assert(ret != 0);
-    vm_head->nr_page++;
+    vm_head->nr_page ++;
   } else {
     pp = item_find->data;
   }
@@ -121,8 +120,8 @@ void map(AddrSpace *as, void *va, void *pa, int prot) {
   }
 }
 
-Context *ucontext(AddrSpace *as, Area kstack, void *entry) {
-  Context *c = (Context *)kstack.end - 1;
+Context* ucontext(AddrSpace *as, Area kstack, void *entry) {
+  Context *c = (Context*)kstack.end - 1;
 
   __am_get_example_uc(c);
   AM_REG_PC(&c->uc) = (uintptr_t)entry;

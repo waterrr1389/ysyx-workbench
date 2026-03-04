@@ -10,4 +10,3 @@
 !Kconfig
 include/config
 include/generated
-!scripts/bench-jit-vs-interpreter.sh

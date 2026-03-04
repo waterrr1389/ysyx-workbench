@@ -1,183 +1,126 @@
-#include "sim_main.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <stdint.h>
 #include "Vtop.h"
 #include "verilated.h"
 #include "verilated_fst_c.h"
+#include "dpi-c.h"
+#include "sim_main.h"
 
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
+#define MBASE 0x80000000
 
-namespace {
-constexpr uint32_t kMbase = 0x80000000u;
-constexpr uint32_t kNopInst = 0x00000013u;
-uint32_t *g_inst_img = nullptr;
-size_t g_inst_img_size = 0;
+Vtop* top;
+VerilatedContext* contextp;
+VerilatedFstC* tfp;
+bool sim;
+static const char *img_file = NULL;
+static uint8_t *img_buf = NULL;
+static long img_size = 0;
 
-Vtop *top = nullptr;
-VerilatedContext *contextp = nullptr;
-VerilatedFstC *tfp = nullptr;
-bool sim_running = false;
+long load_img() {
+	if (img_file == NULL) {
+		fprintf(stderr, "Error: no image is given.\n");
+		exit(1);
+	}
 
-int pc_to_index(uint32_t pc) { return static_cast<int>((pc - kMbase) / 4u); }
+	FILE *fp = fopen(img_file, "rb");
+	if (fp == NULL) {
+		fprintf(stderr, "Error: can not open '%s'\n", img_file);
+		exit(1);
+	}
 
-bool load_inst_img(const char *img_path) {
-  FILE *img_file = fopen(img_path, "rb");
-  if (img_file == nullptr) {
-    fprintf(stderr, "Failed to open instruction file: %s\n", img_path);
-    return false;
-  }
+	fseek(fp, 0, SEEK_END);
+	long size = ftell(fp);
+	assert(size >= 0);
+	fseek(fp, 0, SEEK_SET);
 
-  if (fseek(img_file, 0, SEEK_END) != 0) {
-    fprintf(stderr, "Failed to seek instruction file: %s\n", img_path);
-    fclose(img_file);
-    return false;
-  }
+	img_buf = (uint8_t *)malloc(size);
+	assert(img_buf != NULL);
 
-  const long file_size = ftell(img_file);
-  if (file_size <= 0) {
-    fprintf(stderr, "Instruction file is empty: %s\n", img_path);
-    fclose(img_file);
-    return false;
-  }
+	size_t ret = fread(img_buf, 1, size, fp);
+	assert(ret == (size_t)size);
+	fclose(fp);
 
-  if (fseek(img_file, 0, SEEK_SET) != 0) {
-    fprintf(stderr, "Failed to seek instruction file: %s\n", img_path);
-    fclose(img_file);
-    return false;
-  }
+	printf("The image is %s, size = %ld\n", img_file, size);
+	return size;
+}
 
-  if ((file_size % 4) != 0) {
-    fprintf(stderr, "Instruction file size must be a multiple of 4 bytes: %s\n",
-            img_path);
-    fclose(img_file);
-    return false;
-  }
-
-  uint8_t *raw_data =
-      static_cast<uint8_t *>(malloc(static_cast<size_t>(file_size)));
-  if (raw_data == nullptr) {
-    fprintf(stderr, "Failed to allocate memory for instruction file: %s\n",
-            img_path);
-    fclose(img_file);
-    return false;
-  }
-
-  const size_t read_bytes =
-      fread(raw_data, 1, static_cast<size_t>(file_size), img_file);
-  fclose(img_file);
-  if (read_bytes != static_cast<size_t>(file_size)) {
-    fprintf(stderr, "Failed to read instruction file: %s\n", img_path);
-    free(raw_data);
-    return false;
-  }
-
-  free(g_inst_img);
-  g_inst_img =
-      static_cast<uint32_t *>(malloc(static_cast<size_t>(file_size)));
-  if (g_inst_img == nullptr) {
-    fprintf(stderr, "Failed to allocate instruction image: %s\n", img_path);
-    free(raw_data);
-    return false;
-  }
-
-  g_inst_img_size = static_cast<size_t>(file_size) / 4u;
-  for (size_t i = 0; i < g_inst_img_size; ++i) {
-    const size_t byte_index = i * 4u;
-    const uint32_t inst = static_cast<uint32_t>(raw_data[byte_index]) |
-                          (static_cast<uint32_t>(raw_data[byte_index + 1]) << 8u) |
-                          (static_cast<uint32_t>(raw_data[byte_index + 2]) << 16u) |
-                          (static_cast<uint32_t>(raw_data[byte_index + 3]) << 24u);
-    g_inst_img[i] = inst;
-  }
-  free(raw_data);
-
-  return true;
+int getIndex(int pc) {
+	return (pc-MBASE) / 4;
 }
 
 void fetch_inst() {
-  const int index = pc_to_index(top->pc);
-  const int img_size = static_cast<int>(g_inst_img_size);
+    int index = getIndex(top->pc);
 
-  if (index >= 0 && index < img_size) {
-    top->inst = g_inst_img[index];
-    return;
-  }
-
-  // PC 越界时喂 NOP，避免访问非法地址导致仿真崩溃
-  top->inst = kNopInst;
+    long byte_index = (long)index * 4;
+    if (index >= 0 && byte_index + 4 <= img_size) {
+		printf("Current index is %d\n", index);
+        top->inst = (uint32_t)img_buf[byte_index] |
+                    ((uint32_t)img_buf[byte_index + 1] << 8) |
+                    ((uint32_t)img_buf[byte_index + 2] << 16) |
+                    ((uint32_t)img_buf[byte_index + 3] << 24);
+	} else {
+        top->inst = 0x00000013; 
+	}
 }
 
 void step_and_dump_wave() {
-  top->eval();
-  contextp->timeInc(1);
-  tfp->dump(contextp->time());
-  top->clk = !top->clk;
+	top->eval();
+	contextp->timeInc(1);
+	tfp->dump(contextp->time());
+	top->clk = !top->clk;
 }
-} // namespace
-
-bool is_sim_running() { return sim_running; }
-
-void stop_simulation() { sim_running = false; }
 
 void step_one_cycle() {
-  if (!sim_running) {
-    return;
-  }
-  fetch_inst();
-  step_and_dump_wave();
-  step_and_dump_wave();
+	fetch_inst();
+	step_and_dump_wave();
+	step_and_dump_wave();
 }
 
 void sim_init() {
-  contextp = new VerilatedContext;
-  top = new Vtop{contextp};
-  tfp = new VerilatedFstC;
-  Verilated::traceEverOn(true);
+	contextp = new VerilatedContext;
+	top = new Vtop{contextp};
+	tfp = new VerilatedFstC;
+	Verilated::traceEverOn(true);
+	
+	top->trace(tfp, 99); 
+	tfp->open("waveform.fst");
 
-  top->trace(tfp, 99);
-  tfp->open("waveform.fst");
-
-  top->reset = 1;
-  top->clk = 0;
-  top->inst = 0;
-  sim_running = true;
-
-  for (int i = 0; i < 11; ++i) {
-    step_and_dump_wave();
-  }
-  top->reset = 0;
+	top->reset = 1;
+	top->clk = 0;
+	top->inst = 0;
+	sim = true;
+	// reset
+	// 5 cycles
+	for (int i = 11; i > 0; i--) {
+		step_and_dump_wave();
+	}
+	top->reset = 0;
 }
 
 void sim_exit() {
-  if (tfp != nullptr) {
-    tfp->close();
-    delete tfp;
-    tfp = nullptr;
-  }
-  delete top;
-  top = nullptr;
-  delete contextp;
-  contextp = nullptr;
-  free(g_inst_img);
-  g_inst_img = nullptr;
-  g_inst_img_size = 0;
-  sim_running = false;
+	tfp->close();
+	delete top;
+	delete contextp;
+	free(img_buf);
 }
 
-int main(int argc, char **argv) {
-  if (argc < 2) {
-    fprintf(stderr, "Usage: %s <inst_file_path>\n", argv[0]);
-    return EXIT_FAILURE;
-  }
-  if (!load_inst_img(argv[1])) {
-    return EXIT_FAILURE;
-  }
+int main(int argc, char** argv) {
+	if (argc < 2) {
+		fprintf(stderr, "Usage: %s <image_file>\n", argv[0]);
+		return 1;
+	}
+	img_file = argv[1];
+	img_size = load_img();
 
-  sim_init();
-  while (is_sim_running()) {
-    step_one_cycle();
-  }
-  sim_exit();
+	sim_init();
+	
+	while (sim) {
+		step_one_cycle();
+	}
 
-  return 0;
+	sim_exit();
+
+	return 0;
 }
