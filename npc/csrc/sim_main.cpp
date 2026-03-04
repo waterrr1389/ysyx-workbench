@@ -115,8 +115,9 @@ int main(int argc, char** argv) {
 	img_size = load_img();
 
 	sim_init();
-	
-	while (sim) {
+
+	int cycles= 1000;
+	while (cycles--) {
 		step_one_cycle();
 	}
 

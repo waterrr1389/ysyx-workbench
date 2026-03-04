@@ -109,7 +109,7 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
         funct3,
         4'b0000, // 默认
         {
-            3'b000, 4'b1000 
+            3'b000, 4'b1000 // SW
         }
     );
 

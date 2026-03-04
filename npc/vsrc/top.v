@@ -5,7 +5,7 @@ module top(
     output [31:0] pc
 );
 
-    // ==== 1. 修改 PC 更新逻辑 ====
+    // PC 更新逻辑
     wire [31:0] pc_val, pc_next, pc_plus_4;
     wire pc_wen;
     wire pc_sel; // 从 IDU 引出的 PC 选择信号
@@ -13,7 +13,7 @@ module top(
     assign pc_wen = !reset;
     assign pc_plus_4 = pc_val + 32'd4;
     
-    // 【修改核心】：pc_sel 为 1 时，跳到 ALU 算出来的地址（强制最低位清零符合 RISC-V 规范）
+    // pc_sel 为 1 时，跳到 ALU 算出来的地址
     assign pc_next = pc_sel ? {execution_result[31:1], 1'b0} : pc_plus_4;
 
     Reg #(32, 32'h80000000) programcouter (
@@ -26,12 +26,12 @@ module top(
     assign pc = pc_val;
 
 
-    // ==== 2. 增加 RegisterFile 写回数据选择逻辑 ====
+    // 增加 RegisterFile 写回数据选择逻辑
     wire [31:0] rs1_data, rs2_data;
     wire wb_sel; // 从 IDU 引出的写回选择信号
     wire [31:0] wb_data;
 
-    // 【修改核心】：这就是你的 EXU_MUX，wb_sel 为 1 时写回 PC+4 (用于 JAL/JALR)
+    // 这就是你的 EXU_MUX，wb_sel 为 1 时写回 PC+4 (用于 JAL/JALR)
     assign wb_data = wb_sel ? pc_plus_4 : execution_result;
 
     RegisterFile #(5, 32) rf0 (
