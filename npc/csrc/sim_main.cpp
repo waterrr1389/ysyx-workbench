@@ -100,6 +100,12 @@ void sim_init() {
 }
 
 void sim_exit() {
+	svScope scope = svGetScopeFromName("TOP.top.rf0");
+  assert(scope != nullptr);
+  svSetScope(scope);
+  uint32_t a0 = get_gpr(10);
+	if (a0 == 0) printf("Good Trap!");
+
 	tfp->close();
 	delete top;
 	delete contextp;
