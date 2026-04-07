@@ -5,18 +5,26 @@
 #include "Vtop.h"
 #include "verilated.h"
 #include "verilated_fst_c.h"
+#include "svdpi.h"
 #include "dpi-c.h"
 #include "sim_main.h"
 
 #define MBASE 0x80000000
+#define ANSI_FG_RED     "\33[1;31m"
+#define ANSI_FG_GREEN   "\33[1;32m"
+#define ANSI_NONE       "\33[0m"
+#define ANSI_FMT(str, fmt) fmt str ANSI_NONE
 
 Vtop* top;
 VerilatedContext* contextp;
 VerilatedFstC* tfp;
 bool sim;
+unsigned int current_pc;
+NPCState npc_state = { .state = NPC_STOP, .halt_pc = 0, .halt_ret = 0 };
 static const char *img_file = NULL;
 static uint8_t *img_buf = NULL;
 static long img_size = 0;
+static svScope gpr_scope = nullptr;
 
 long load_img() {
 	if (img_file == NULL) {
@@ -51,6 +59,7 @@ int getIndex(int pc) {
 }
 
 void fetch_inst() {
+    current_pc = top->pc;
     int index = getIndex(top->pc);
 
     long byte_index = (long)index * 4;
@@ -91,6 +100,12 @@ void sim_init() {
 	top->clk = 0;
 	top->inst = 0;
 	sim = true;
+	npc_state.state = NPC_RUNNING;
+	npc_state.halt_pc = 0;
+	npc_state.halt_ret = 0;
+	current_pc = top->pc;
+	gpr_scope = svGetScopeFromName("TOP.top.rf0");
+	assert(gpr_scope != nullptr);
 	// reset
 	// 5 cycles
 	for (int i = 11; i > 0; i--) {
@@ -100,11 +115,15 @@ void sim_init() {
 }
 
 void sim_exit() {
-	svScope scope = svGetScopeFromName("TOP.top.rf0");
-  assert(scope != nullptr);
-  svSetScope(scope);
-  uint32_t a0 = get_gpr(10);
-	if (a0 == 0) printf("Good Trap!");
+	if (npc_state.state == NPC_END) {
+		svSetScope(gpr_scope);
+		npc_state.halt_ret = get_gpr(10);
+		printf("npc: %s at pc = 0x%08x\n",
+			npc_state.halt_ret == 0
+				? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN)
+				: ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED),
+			npc_state.halt_pc);
+	}
 
 	tfp->close();
 	delete top;
