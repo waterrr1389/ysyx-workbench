@@ -9,143 +9,169 @@
 #include "dpi-c.h"
 #include "sim_main.h"
 
-#define MBASE 0x80000000
+#define MBASE 0x80000000u
 #define ANSI_FG_RED     "\33[1;31m"
 #define ANSI_FG_GREEN   "\33[1;32m"
 #define ANSI_NONE       "\33[0m"
 #define ANSI_FMT(str, fmt) fmt str ANSI_NONE
+#define RESET_CYCLES    11
+#define NOP_INST        0x00000013u
+#define A0_REG_INDEX    10u
+#define GPR_SCOPE_NAME  "TOP.top.rf0"
 
 Vtop* top;
 VerilatedContext* contextp;
 VerilatedFstC* tfp;
 bool sim;
-unsigned int current_pc;
+uint32_t current_pc;
 NPCState npc_state = { .state = NPC_STOP, .halt_pc = 0, .halt_ret = 0 };
-static const char *img_file = NULL;
+static const char* img_file = NULL;
 static uint8_t *img_buf = NULL;
 static long img_size = 0;
 static svScope gpr_scope = nullptr;
 
+static void init_npc_state() {
+  sim = true;
+  current_pc = 0;
+  npc_state.state = NPC_RUNNING;
+  npc_state.halt_pc = 0;
+  npc_state.halt_ret = 0;
+}
+
+static void init_gpr_scope() {
+  gpr_scope = svGetScopeFromName(GPR_SCOPE_NAME);
+  assert(gpr_scope != nullptr);
+}
+
+static uint32_t read_gpr(uint32_t index) {
+  svSetScope(gpr_scope);
+  return get_gpr(index);
+}
+
+static void print_trap_result() {
+  if (npc_state.state != NPC_END) {
+    return;
+  }
+
+  npc_state.halt_ret = read_gpr(A0_REG_INDEX);
+  printf("npc: %s at pc = 0x%08x\n",
+      npc_state.halt_ret == 0
+          ? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN)
+          : ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED),
+      npc_state.halt_pc);
+}
+
+static void cleanup() {
+  tfp->close();
+  delete top;
+  delete contextp;
+  free(img_buf);
+}
+
 long load_img() {
-	if (img_file == NULL) {
-		fprintf(stderr, "Error: no image is given.\n");
-		exit(1);
-	}
+  if (img_file == NULL) {
+    fprintf(stderr, "Error: no image is given.\n");
+    exit(1);
+  }
 
-	FILE *fp = fopen(img_file, "rb");
-	if (fp == NULL) {
-		fprintf(stderr, "Error: can not open '%s'\n", img_file);
-		exit(1);
-	}
+  FILE* fp = fopen(img_file, "rb");
+  if (fp == NULL) {
+    fprintf(stderr, "Error: can not open '%s'\n", img_file);
+    exit(1);
+  }
 
-	fseek(fp, 0, SEEK_END);
-	long size = ftell(fp);
-	assert(size >= 0);
-	fseek(fp, 0, SEEK_SET);
+  fseek(fp, 0, SEEK_END);
+  long size = ftell(fp);
+  assert(size >= 0);
+  fseek(fp, 0, SEEK_SET);
 
-	img_buf = (uint8_t *)malloc(size);
-	assert(img_buf != NULL);
+  img_buf = (uint8_t*)malloc(size);
+  assert(img_buf != NULL);
 
-	size_t ret = fread(img_buf, 1, size, fp);
-	assert(ret == (size_t)size);
-	fclose(fp);
+  size_t ret = fread(img_buf, 1, size, fp);
+  assert(ret == (size_t)size);
+  fclose(fp);
 
-	printf("The image is %s, size = %ld\n", img_file, size);
-	return size;
+  printf("The image is %s, size = %ld\n", img_file, size);
+  return size;
 }
 
-int getIndex(int pc) {
-	return (pc-MBASE) / 4;
+static int get_inst_index(uint32_t pc) {
+  return (pc - MBASE) / 4;
 }
 
-void fetch_inst() {
-    current_pc = top->pc;
-    int index = getIndex(top->pc);
+static void fetch_inst() {
+  current_pc = top->pc;
+  int index = get_inst_index(top->pc);
+  long byte_index = (long)index * 4;
 
-    long byte_index = (long)index * 4;
-    if (index >= 0 && byte_index + 4 <= img_size) {
-		printf("Current index is %d\n", index);
-        top->inst = (uint32_t)img_buf[byte_index] |
-                    ((uint32_t)img_buf[byte_index + 1] << 8) |
-                    ((uint32_t)img_buf[byte_index + 2] << 16) |
-                    ((uint32_t)img_buf[byte_index + 3] << 24);
-	} else {
-        top->inst = 0x00000013; 
-	}
+  if (index >= 0 && byte_index + 4 <= img_size) {
+    printf("Current index is %d\n", index);
+    top->inst = (uint32_t)img_buf[byte_index]
+              | ((uint32_t)img_buf[byte_index + 1] << 8)
+              | ((uint32_t)img_buf[byte_index + 2] << 16)
+              | ((uint32_t)img_buf[byte_index + 3] << 24);
+    return;
+  }
+
+  top->inst = NOP_INST;
 }
 
-void step_and_dump_wave() {
-	top->eval();
-	contextp->timeInc(1);
-	tfp->dump(contextp->time());
-	top->clk = !top->clk;
+static void step_and_dump_wave() {
+  top->eval();
+  contextp->timeInc(1);
+  tfp->dump(contextp->time());
+  top->clk = !top->clk;
 }
 
 void step_one_cycle() {
-	fetch_inst();
-	step_and_dump_wave();
-	step_and_dump_wave();
+  fetch_inst();
+  step_and_dump_wave();
+  step_and_dump_wave();
 }
 
 void sim_init() {
-	contextp = new VerilatedContext;
-	top = new Vtop{contextp};
-	tfp = new VerilatedFstC;
-	Verilated::traceEverOn(true);
-	
-	top->trace(tfp, 99); 
-	tfp->open("waveform.fst");
+  contextp = new VerilatedContext;
+  top = new Vtop{contextp};
+  tfp = new VerilatedFstC;
+  Verilated::traceEverOn(true);
 
-	top->reset = 1;
-	top->clk = 0;
-	top->inst = 0;
-	sim = true;
-	npc_state.state = NPC_RUNNING;
-	npc_state.halt_pc = 0;
-	npc_state.halt_ret = 0;
-	current_pc = top->pc;
-	gpr_scope = svGetScopeFromName("TOP.top.rf0");
-	assert(gpr_scope != nullptr);
-	// reset
-	// 5 cycles
-	for (int i = 11; i > 0; i--) {
-		step_and_dump_wave();
-	}
-	top->reset = 0;
+  top->trace(tfp, 99);
+  tfp->open("waveform.fst");
+
+  top->reset = 1;
+  top->clk = 0;
+  top->inst = 0;
+
+  init_npc_state();
+  init_gpr_scope();
+
+  for (int i = 0; i < RESET_CYCLES; i++) {
+    step_and_dump_wave();
+  }
+  top->reset = 0;
+  current_pc = top->pc;
 }
 
 void sim_exit() {
-	if (npc_state.state == NPC_END) {
-		svSetScope(gpr_scope);
-		npc_state.halt_ret = get_gpr(10);
-		printf("npc: %s at pc = 0x%08x\n",
-			npc_state.halt_ret == 0
-				? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN)
-				: ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED),
-			npc_state.halt_pc);
-	}
-
-	tfp->close();
-	delete top;
-	delete contextp;
-	free(img_buf);
+  print_trap_result();
+  cleanup();
 }
 
 int main(int argc, char** argv) {
-	if (argc < 2) {
-		fprintf(stderr, "Usage: %s <image_file>\n", argv[0]);
-		return 1;
-	}
-	img_file = argv[1];
-	img_size = load_img();
+  if (argc < 2) {
+    fprintf(stderr, "Usage: %s <image_file>\n", argv[0]);
+    return 1;
+  }
 
-	sim_init();
+  img_file = argv[1];
+  img_size = load_img();
 
-	while (sim) {
-		step_one_cycle();
-	}
+  sim_init();
+  while (sim) {
+    step_one_cycle();
+  }
+  sim_exit();
 
-	sim_exit();
-
-	return 0;
+  return 0;
 }
