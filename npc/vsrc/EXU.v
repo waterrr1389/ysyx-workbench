@@ -13,7 +13,7 @@ module EXU #(DATA_LEN = 1) (
     assign sub_OF = (a[DATA_LEN-1] == sub_b[DATA_LEN-1]) & (sub_tmp[DATA_LEN-1] != a[DATA_LEN-1]);
     
     // 调用 C++ 侧 DPI 函数 (ebreak)
-    import "DPI-C" function void ebreak();
+    import "DPI-C" function void npc_trap();
 
     always@(*) begin
         // 默认值 (out = 0)
@@ -68,7 +68,7 @@ module EXU #(DATA_LEN = 1) (
             end
             // ebreak 指令处理 (ebreak())
             4'b1111: begin
-                ebreak();
+                npc_trap();
             end
             // 默认输出 0 (out = 0)
             default: begin

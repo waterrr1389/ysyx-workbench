@@ -5,7 +5,6 @@ module top(
     output [31:0] pc
 );
 
-    // PC 更新逻辑
     wire [31:0] pc_val, pc_next, pc_plus_4;
     wire pc_wen;
     wire pc_sel; // 从 IDU 引出的 PC 选择信号
@@ -26,18 +25,17 @@ module top(
     assign pc = pc_val;
 
 
-    // 增加 RegisterFile 写回数据选择逻辑
     wire [31:0] rs1_data, rs2_data;
     wire wb_sel; // 从 IDU 引出的写回选择信号
     wire [31:0] wb_data;
 
-    // 这就是你的 EXU_MUX，wb_sel 为 1 时写回 PC+4 (用于 JAL/JALR)
+    //  EXU_MUX，wb_sel 为 1 时写回 PC+4 (用于 JAL/JALR)
     assign wb_data = wb_sel ? pc_plus_4 : execution_result;
 
     RegisterFile #(5, 32) rf0 (
         .wen(reg_wen_wire), 
         .clk(clk),
-        .wdata(wb_data), // 【修改】不再硬连到 execution_result，而是连到 MUX 输出
+        .wdata(wb_data),
         .waddr(rd_addr),
         .raddr1(rs1_addr),
         .raddr2(rs2_addr),
@@ -45,7 +43,6 @@ module top(
         .out2(rs2_data)
     );
 
-    // ==== 3. 把新信号接在 IDU 实例上 ====
     wire [4:0] rs1_addr, rs2_addr, rd_addr;
     wire [3:0] sel;
     wire [2:0] inst_type;
