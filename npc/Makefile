@@ -1,13 +1,15 @@
 VERILATOR := verilator
 BUILD_DIR := ./build
 VERILATOR_FLAGS := --trace-fst -cc --exe --build -j -Wall --top-module top --Mdir build
-CFLAGS := -CFLAGS -Wall -CFLAGS -Werror
+CFLAGS := -CFLAGS -Wall -CFLAGS -Werror -CFLAGS -Wno-unused-function
+INC_PATH += $(NPC_HOME)/trace
+INCFLAGS += $(addprefix -CFLAGS -I, $(INC_PATH))
 VSRCS = $(shell find $(abspath ./vsrc) -name "*.v")
-CSRCS = $(shell find $(abspath ./csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
+CSRCS = $(shell find $(abspath ./csrc) $(abspath ./trace) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 
 
 sim: $(BUILD_DIR)
-	$(VERILATOR) $(VERILATOR_FLAGS) $(CFLAGS) $(VSRCS) $(CSRCS)  
+	$(VERILATOR) $(VERILATOR_FLAGS) $(CFLAGS) $(INCFLAGS) $(VSRCS) $(CSRCS)  
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
 	@echo "Write this Makefile by your self."
 

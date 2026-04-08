@@ -1,5 +1,7 @@
+#include <cstdint>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 #include <stdint.h>
 #include "Vtop.h"
@@ -18,6 +20,7 @@
 #define NOP_INST        0x00000013u
 #define A0_REG_INDEX    10u
 #define GPR_SCOPE_NAME  "TOP.top.rf0"
+#define NPC_ITRACE 1
 
 Vtop* top;
 VerilatedContext* contextp;
@@ -27,6 +30,7 @@ uint32_t current_pc;
 NPCState npc_state = { .state = NPC_STOP, .halt_pc = 0, .halt_ret = 0 };
 static const char* img_file = NULL;
 static uint8_t *img_buf = NULL;
+static char* inst_buf = NULL;
 static long img_size = 0;
 static svScope gpr_scope = nullptr;
 
@@ -65,6 +69,7 @@ static void cleanup() {
   tfp->close();
   delete top;
   delete contextp;
+  free(inst_buf);
   free(img_buf);
 }
 
@@ -105,16 +110,41 @@ static void fetch_inst() {
   int index = get_inst_index(top->pc);
   long byte_index = (long)index * 4;
 
-  if (index >= 0 && byte_index + 4 <= img_size) {
-    printf("Current index is %d\n", index);
-    top->inst = (uint32_t)img_buf[byte_index]
+	uint32_t inst = (uint32_t)img_buf[byte_index]
               | ((uint32_t)img_buf[byte_index + 1] << 8)
               | ((uint32_t)img_buf[byte_index + 2] << 16)
               | ((uint32_t)img_buf[byte_index + 3] << 24);
-    return;
-  }
 
-  top->inst = NOP_INST;
+  if (index >= 0 && byte_index + 4 <= img_size) {
+    top->inst = inst; 
+  } else {
+  	top->inst = NOP_INST;
+	}
+
+#ifdef NPC_ITRACE
+	char *p = inst_buf;
+  p += snprintf(p, 128, FMT_WORD ":", current_pc);
+  int ilen = 8; 
+  int i;
+
+  for (i = ilen - 1; i >= 0; i--) { // 以小端序输出指令
+    p += snprintf(p, 4, " %02x", img_buf[byte_index+i]);
+  }
+  int ilen_max = 4;
+  int space_len = ilen_max - ilen; // space_len空格长度
+  if (space_len < 0)
+    space_len = 0;
+  space_len = space_len * 3 + 1; // 对于RV来说,space=1
+  memset(p, ' ', space_len);
+  p += space_len;
+
+  void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
+
+  int disassemble_size = 128 - (int)(p - inst_buf);
+  disassemble(p, disassemble_size, current_pc,
+              (uint8_t*)&inst, ilen);
+  iRingBufferWrite(p, disassemble_size);
+#endif
 }
 
 static void step_and_dump_wave() {
@@ -135,6 +165,9 @@ void sim_init() {
   top = new Vtop{contextp};
   tfp = new VerilatedFstC;
   Verilated::traceEverOn(true);
+
+	inst_buf = (char*)malloc(128);
+	Assert(inst_buf, "Failed to alloc memory for itarce buffer");
 
   top->trace(tfp, 99);
   tfp->open("waveform.fst");

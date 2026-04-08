@@ -1,6 +1,11 @@
 #pragma once
 
+#include <assert.h>
+#include <inttypes.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <iRingBuffer.h>
 
 class Vtop;
 class VerilatedContext;
@@ -25,3 +30,14 @@ long load_img();
 void step_one_cycle();
 void sim_init();
 void sim_exit();
+
+#define FMT_WORD "0x%08" PRIx32
+
+#define Assert(cond, format, ...) \
+  do { \
+    if (!(cond)) { \
+      fflush(stdout); \
+      fprintf(stderr, format "\n", ## __VA_ARGS__); \
+      assert(cond); \
+    } \
+  } while (0)
