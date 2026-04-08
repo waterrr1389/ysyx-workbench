@@ -45,6 +45,7 @@ static struct {
 } cmd_table[] = {
 	{"help", "Display information about all supported commands", cmd_help},
 	{"q", "Exit NEMU", cmd_q},
+	{"c", "Continue the execution of the program", cmd_c},
 	{"si", "Execute N instructions then pause (default N=1)", cmd_si},
 	{"info", "Print register status", cmd_info}
 };
