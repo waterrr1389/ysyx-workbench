@@ -30,11 +30,13 @@ VerilatedFstC* tfp;
 bool sim;
 uint32_t current_pc;
 NPCState npc_state = { .state = NPC_STOP, .halt_pc = 0, .halt_ret = 0 };
+svScope gpr_scope = nullptr;
 static const char* img_file = NULL;
 static uint8_t *img_buf = NULL;
 static char* inst_buf = NULL;
 static long img_size = 0;
-static svScope gpr_scope = nullptr;
+
+void sdb_mainloop();
 
 static void init_npc_state() {
   sim = true;
@@ -49,7 +51,7 @@ static void init_gpr_scope() {
   assert(gpr_scope != nullptr);
 }
 
-static uint32_t read_gpr(uint32_t index) {
+uint32_t read_gpr(uint32_t index) {
   svSetScope(gpr_scope);
   return get_gpr(index);
 }
@@ -211,9 +213,7 @@ int main(int argc, char** argv) {
   img_size = load_img();
 
   sim_init();
-  while (sim) {
-    step_one_cycle();
-  }
+  sdb_mainloop();
   sim_exit();
 
   return 0;
