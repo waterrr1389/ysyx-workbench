@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include "Vtop.h"
+#include "iRingBuffer.h"
 #include "verilated.h"
 #include "verilated_fst_c.h"
 #include "svdpi.h"
@@ -184,10 +185,17 @@ void sim_init() {
   }
   top->reset = 0;
   current_pc = top->pc;
+
+#ifdef NPC_ITRACE
+  iRingBufferInit();
+#endif
 }
 
 void sim_exit() {
   print_trap_result();
+#ifdef NPC_ITRACE
+  iRingBufferDump();
+#endif
   cleanup();
 }
 
