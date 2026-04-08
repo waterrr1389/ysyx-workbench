@@ -7,7 +7,7 @@ INC_PATH += $(NPC_HOME)/trace
 INCFLAGS += $(addprefix -CFLAGS -I, $(INC_PATH))
 VSRCS = $(shell find $(abspath ./vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath ./csrc) $(abspath ./trace) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
-
+ALL := ./dummy.bin
 
 sim: $(BUILD_DIR)
 	$(VERILATOR) $(VERILATOR_FLAGS) $(CFLAGS) $(INCFLAGS) $(VSRCS) $(CSRCS)  
@@ -21,7 +21,7 @@ wave:
 	gtkwave waveform.fst
 
 run:
-	$(BUILD_DIR)/Vtop
+	$(BUILD_DIR)/Vtop $(ALL)
 
 .PHONY:  sim run clean wave
 

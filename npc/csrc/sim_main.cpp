@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include "Vtop.h"
+#include "disasm.h"
 #include "iRingBuffer.h"
 #include "verilated.h"
 #include "verilated_fst_c.h"
@@ -186,6 +187,7 @@ void sim_init() {
   top->reset = 0;
   current_pc = top->pc;
 
+  init_disasm();
 #ifdef NPC_ITRACE
   iRingBufferInit();
 #endif
