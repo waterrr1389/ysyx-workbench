@@ -218,8 +218,8 @@ void sim_exit(void) {
 }
 
 int main(int argc, char** argv) {
-  if (argc < 2 || argc > 3) {
-    fprintf(stderr, "Usage: %s <image_file> [elf_file]\n", argv[0]);
+  if (argc < 2) {
+    fprintf(stderr, "Usage: %s [elf_file]\n", argv[0]);
     return 1;
   }
 
@@ -228,12 +228,9 @@ int main(int argc, char** argv) {
     elf_file = argv[2];
   }
   img_size = load_img();
+  
+  readelf(img_file);
 
-#ifdef NPC_FTRACE
-  if (elf_file != NULL) {
-    readelf(elf_file);
-  }
-#endif
   sim_init();
   sdb_mainloop();
   sim_exit();
