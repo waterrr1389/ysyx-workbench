@@ -14,6 +14,7 @@
 #include "sim/sdb.h"
 #include "sim/sim_main.h"
 #include "trace/disasm.h"
+#include "trace/ftrace.h"
 #include "trace/iRingBuffer.h"
 
 #define MBASE 0x80000000u
@@ -35,6 +36,7 @@ uint32_t current_pc;
 NPCState npc_state = { .state = NPC_STOP, .halt_pc = 0, .halt_ret = 0 };
 svScope gpr_scope = nullptr;
 static const char* img_file = NULL;
+static const char* elf_file = NULL;
 static uint8_t *img_buf = NULL;
 static char* inst_buf = NULL;
 static long img_size = 0;
@@ -114,26 +116,39 @@ static void fetch_inst() {
   current_pc = top->pc;
   int index = get_inst_index(top->pc);
   long byte_index = (long)index * 4;
+  bool valid_inst = (index >= 0 && byte_index + 4 <= img_size);
+  uint32_t inst = NOP_INST;
 
-	uint32_t inst = (uint32_t)img_buf[byte_index]
-              | ((uint32_t)img_buf[byte_index + 1] << 8)
-              | ((uint32_t)img_buf[byte_index + 2] << 16)
-              | ((uint32_t)img_buf[byte_index + 3] << 24);
-
-  if (index >= 0 && byte_index + 4 <= img_size) {
+  if (valid_inst) {
+    inst = (uint32_t)img_buf[byte_index]
+        | ((uint32_t)img_buf[byte_index + 1] << 8)
+        | ((uint32_t)img_buf[byte_index + 2] << 16)
+        | ((uint32_t)img_buf[byte_index + 3] << 24);
     top->inst = inst; 
   } else {
   	top->inst = NOP_INST;
 	}
 
+#ifdef NPC_FTRACE
+  if (valid_inst) {
+    ftrace_check(current_pc, inst);
+  }
+#endif
+
 #ifdef NPC_ITRACE
 	char *p = inst_buf;
   p += snprintf(p, 128, FMT_WORD ":", current_pc);
-  int ilen = 8; 
+  int ilen = 4; 
   int i;
 
-  for (i = ilen - 1; i >= 0; i--) { // 以小端序输出指令
-    p += snprintf(p, 4, " %02x", img_buf[byte_index+i]);
+  if (valid_inst) {
+    for (i = ilen - 1; i >= 0; i--) { // 以小端序输出指令
+      p += snprintf(p, 4, " %02x", img_buf[byte_index+i]);
+    }
+  } else {
+    for (i = ilen - 1; i >= 0; i--) {
+      p += snprintf(p, 4, " %02x", (NOP_INST >> (i * 8)) & 0xff);
+    }
   }
   int ilen_max = 4;
   int space_len = ilen_max - ilen; // space_len空格长度
@@ -203,14 +218,22 @@ void sim_exit(void) {
 }
 
 int main(int argc, char** argv) {
-  if (argc < 2) {
-    fprintf(stderr, "Usage: %s <image_file>\n", argv[0]);
+  if (argc < 2 || argc > 3) {
+    fprintf(stderr, "Usage: %s <image_file> [elf_file]\n", argv[0]);
     return 1;
   }
 
   img_file = argv[1];
+  if (argc == 3) {
+    elf_file = argv[2];
+  }
   img_size = load_img();
 
+#ifdef NPC_FTRACE
+  if (elf_file != NULL) {
+    readelf(elf_file);
+  }
+#endif
   sim_init();
   sdb_mainloop();
   sim_exit();

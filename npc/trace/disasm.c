@@ -42,20 +42,5 @@ void disassemble(char* str, int size, uint64_t pc, const uint8_t* code, int nbyt
   if (insn->op_str[0] != '\0') {
     snprintf(str + ret, size - ret, "\t%s", insn->op_str);
   }
-
-#ifndef FTRACE
-  // 判断目前指令是否是 JAL/JALR  
-  cs_detail* detail = insn->detail;
-  
-
-  if (insn->id == RISCV_INS_C_JALR) {
-    // 根据操作数判断
-
-  } else if (insn->id == RISCV_INS_C_JAL) {
-
-  } else {
-
-  }
-#endif
   cs_free_dl(insn, count);
 }

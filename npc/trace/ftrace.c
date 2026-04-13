@@ -1,6 +1,8 @@
 #include "base/debug.h"
+#include "sim/sim_main.h"
 #include "trace/callstack.h"
 #include "trace/ftrace.h"
+#include "trace/riscv_decode.h"
 
 static Elf_Shdr symtab, strtab;
 static FILE *fp;
@@ -60,19 +62,14 @@ void readelf(const char *path) {
   fseek(fp, symtab.sh_offset, SEEK_SET);
   fread(symbols, sizeof(Elf_Sym), symtab_count, fp);
 
-  // Initialize Call Stack
-  init_stack();
-}
-
-// implement ftrace
-void ftrace(word_t pc) {
-  printf("Hello from ftrace\n\
-            Offset of symtab is 0x%x\n\
-            Offset of strtab is 0x%x\n",
-         symtab.sh_offset, strtab.sh_offset);
+  fclose(fp);
+  fp = NULL;
 }
 
 static void get_func_name(char *func_name, word_t addr) {
+  strncpy(func_name, "???", FUNC_LENGH - 1);
+  func_name[FUNC_LENGH - 1] = '\0';
+
   if (symbols == NULL || strtab_buf == NULL)
     return;
 
@@ -100,8 +97,6 @@ static void get_func_name(char *func_name, word_t addr) {
       }
     }
   }
-  // 如果没找到，可以填一个 unknown 或者不处理
-  strncpy(func_name, "???", FUNC_LENGH - 1);
 }
 
 static void print_indent(int depth) {
@@ -142,4 +137,32 @@ void ret_record(word_t pc) {
 
   // 3. 出栈
   stack_pop();
+}
+
+void ftrace_check(word_t pc, uint32_t inst) {
+  uint32_t opcode = RV_OPCODE(inst);
+  uint32_t rd = RV_RD(inst);
+
+  if (opcode == 0x6f) {
+    if (rd == 1U) {
+      word_t dst = pc + (word_t)RV_IMM_J(inst);
+      call_record(pc, dst);
+    }
+    return;
+  }
+
+  if (opcode == 0x67 && RV_FUNCT3(inst) == 0U) {
+    uint32_t rs1 = RV_RS1(inst);
+    int32_t imm = RV_IMM_I(inst);
+
+    if (rd == 0U && rs1 == 1U && imm == 0) {
+      ret_record(pc);
+      return;
+    }
+
+    if (rd == 1U) {
+      word_t dst = (read_gpr(rs1) + (word_t)imm) & ~1U;
+      call_record(pc, dst);
+    }
+  }
 }

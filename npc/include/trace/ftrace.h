@@ -137,7 +137,7 @@ extern "C" {
 #endif
 
 void readelf(const char* path);
-void ftrace(word_t pc);
+void ftrace_check(word_t pc, uint32_t inst);
 void call_record(word_t pc, word_t dst);
 void ret_record(word_t pc);
 
