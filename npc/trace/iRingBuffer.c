@@ -1,4 +1,4 @@
-#include "iRingBuffer.h"
+#include "trace/iRingBuffer.h"
 
 #include <stdio.h>
 #include <string.h>

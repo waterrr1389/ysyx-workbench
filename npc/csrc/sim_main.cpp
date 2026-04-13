@@ -5,13 +5,16 @@
 #include <assert.h>
 #include <stdint.h>
 #include "Vtop.h"
-#include "disasm.h"
-#include "iRingBuffer.h"
+#include "Vtop__Dpi.h"
 #include "verilated.h"
 #include "verilated_fst_c.h"
 #include "svdpi.h"
-#include "dpi-c.h"
-#include "sim_main.h"
+#include "base/debug.h"
+#include "sim/dpi-c.h"
+#include "sim/sdb.h"
+#include "sim/sim_main.h"
+#include "trace/disasm.h"
+#include "trace/iRingBuffer.h"
 
 #define MBASE 0x80000000u
 #define ANSI_FG_RED     "\33[1;31m"
@@ -35,8 +38,6 @@ static const char* img_file = NULL;
 static uint8_t *img_buf = NULL;
 static char* inst_buf = NULL;
 static long img_size = 0;
-
-void sdb_mainloop();
 
 static void init_npc_state() {
   sim = true;
@@ -77,7 +78,7 @@ static void cleanup() {
   free(img_buf);
 }
 
-long load_img() {
+long load_img(void) {
   if (img_file == NULL) {
     fprintf(stderr, "Error: no image is given.\n");
     exit(1);
@@ -142,11 +143,9 @@ static void fetch_inst() {
   memset(p, ' ', space_len);
   p += space_len;
 
-  void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
-
   int disassemble_size = 128 - (int)(p - inst_buf);
   disassemble(p, disassemble_size, current_pc,
-              (uint8_t*)&inst, ilen);
+              (const uint8_t*)&inst, ilen);
   iRingBufferWrite(p, disassemble_size);
 #endif
 }
@@ -158,13 +157,13 @@ static void step_and_dump_wave() {
   top->clk = !top->clk;
 }
 
-void step_one_cycle() {
+void step_one_cycle(void) {
   fetch_inst();
   step_and_dump_wave();
   step_and_dump_wave();
 }
 
-void sim_init() {
+void sim_init(void) {
   contextp = new VerilatedContext;
   top = new Vtop{contextp};
   tfp = new VerilatedFstC;
@@ -195,7 +194,7 @@ void sim_init() {
 #endif
 }
 
-void sim_exit() {
+void sim_exit(void) {
   print_trap_result();
 #ifdef NPC_ITRACE
   iRingBufferDump();

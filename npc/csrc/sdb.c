@@ -3,12 +3,11 @@
 #include <string.h>
 #include <readline/history.h>
 #include <readline/readline.h>
-#include "sim_main.h"
+#include "sim/sdb.h"
+#include "sim/sim_main.h"
 
 #define ARRLEN(arr) (int)(sizeof(arr) / sizeof(arr[0]))
 #define NR_CMD ARRLEN(cmd_table)
-
-extern bool sim;
 
 static int cmd_c(char* args);
 static int cmd_q(char* args);
@@ -29,7 +28,7 @@ static char *rl_gets() {
 		line_read = NULL;
 	}
 
-	line_read = readline("(nemu) ");
+	line_read = readline("(npc) ");
 
 	if (line_read && *line_read) {
 		add_history(line_read);
@@ -105,7 +104,7 @@ static int cmd_info(char* args) {
 	return 0;
 }
 
-void sdb_mainloop() {
+void sdb_mainloop(void) {
 	// see parse_args in monitor/monitor.c
 	// In normal case, the value of is_batch_mode is false
 	// if (is_batch_mode) {

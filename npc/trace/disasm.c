@@ -1,4 +1,4 @@
-#include "disasm.h"
+#include "trace/disasm.h"
 
 #include <assert.h>
 #include <dlfcn.h>
@@ -33,7 +33,7 @@ void init_disasm(void) {
   assert(ret == CS_ERR_OK);
 }
 
-void disassemble(char* str, int size, uint64_t pc, uint8_t* code, int nbyte) {
+void disassemble(char* str, int size, uint64_t pc, const uint8_t* code, int nbyte) {
   cs_insn* insn = NULL;
   size_t count = cs_disasm_dl(handle, code, nbyte, pc, 0, &insn);
   assert(count == 1);
@@ -43,5 +43,19 @@ void disassemble(char* str, int size, uint64_t pc, uint8_t* code, int nbyte) {
     snprintf(str + ret, size - ret, "\t%s", insn->op_str);
   }
 
+#ifndef FTRACE
+  // 判断目前指令是否是 JAL/JALR  
+  cs_detail* detail = insn->detail;
+  
+
+  if (insn->id == RISCV_INS_C_JALR) {
+    // 根据操作数判断
+
+  } else if (insn->id == RISCV_INS_C_JAL) {
+
+  } else {
+
+  }
+#endif
   cs_free_dl(insn, count);
 }
