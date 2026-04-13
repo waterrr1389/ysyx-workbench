@@ -224,11 +224,8 @@ int main(int argc, char** argv) {
   }
 
   img_file = argv[1];
-  if (argc == 3) {
-    elf_file = argv[2];
-  }
+
   img_size = load_img();
-  
   readelf(img_file);
 
   sim_init();
