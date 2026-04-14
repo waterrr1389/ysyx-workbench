@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,13 +12,13 @@
 #include "svdpi.h"
 #include "base/debug.h"
 #include "sim/dpi-c.h"
+#include "sim/pmem.h"
 #include "sim/sdb.h"
 #include "sim/sim_main.h"
 #include "trace/disasm.h"
 #include "trace/ftrace.h"
 #include "trace/iRingBuffer.h"
 
-#define MBASE 0x80000000u
 #define ANSI_FG_RED     "\33[1;31m"
 #define ANSI_FG_GREEN   "\33[1;32m"
 #define ANSI_NONE       "\33[0m"
@@ -37,7 +38,6 @@ NPCState npc_state = { .state = NPC_STOP, .halt_pc = 0, .halt_ret = 0 };
 svScope gpr_scope = nullptr;
 static const char* img_file = NULL;
 static const char* elf_file = NULL;
-static uint8_t *img_buf = NULL;
 static char* inst_buf = NULL;
 static long img_size = 0;
 
@@ -77,7 +77,7 @@ static void cleanup() {
   delete top;
   delete contextp;
   free(inst_buf);
-  free(img_buf);
+  free_mem();
 }
 
 long load_img(void) {
@@ -97,10 +97,11 @@ long load_img(void) {
   assert(size >= 0);
   fseek(fp, 0, SEEK_SET);
 
-  img_buf = (uint8_t*)malloc(size);
-  assert(img_buf != NULL);
+  Assert((unsigned long)size <= PMEM_SIZE,
+      "Image '%s' is too large: %ld bytes exceeds pmem size %u",
+      img_file, size, PMEM_SIZE);
 
-  size_t ret = fread(img_buf, 1, size, fp);
+  size_t ret = fread(guest_to_host(PMEM_BASE), 1, size, fp);
   assert(ret == (size_t)size);
   fclose(fp);
 
@@ -108,31 +109,14 @@ long load_img(void) {
   return size;
 }
 
-static int get_inst_index(uint32_t pc) {
-  return (pc - MBASE) / 4;
-}
-
 static void fetch_inst() {
   current_pc = top->pc;
-  int index = get_inst_index(top->pc);
-  long byte_index = (long)index * 4;
-  bool valid_inst = (index >= 0 && byte_index + 4 <= img_size);
-  uint32_t inst = NOP_INST;
+  uint32_t inst = pmem_read(current_pc, 4);
 
-  if (valid_inst) {
-    inst = (uint32_t)img_buf[byte_index]
-        | ((uint32_t)img_buf[byte_index + 1] << 8)
-        | ((uint32_t)img_buf[byte_index + 2] << 16)
-        | ((uint32_t)img_buf[byte_index + 3] << 24);
-    top->inst = inst; 
-  } else {
-  	top->inst = NOP_INST;
-	}
+  top->inst = inst;
 
 #ifdef NPC_FTRACE
-  if (valid_inst) {
-    ftrace_check(current_pc, inst);
-  }
+  ftrace_check(current_pc, inst);
 #endif
 
 #ifdef NPC_ITRACE
@@ -141,14 +125,9 @@ static void fetch_inst() {
   int ilen = 4; 
   int i;
 
-  if (valid_inst) {
-    for (i = ilen - 1; i >= 0; i--) { // 以小端序输出指令
-      p += snprintf(p, 4, " %02x", img_buf[byte_index+i]);
-    }
-  } else {
-    for (i = ilen - 1; i >= 0; i--) {
-      p += snprintf(p, 4, " %02x", (NOP_INST >> (i * 8)) & 0xff);
-    }
+  for (i = ilen - 1; i >= 0; i--) {
+    uint8_t byte = (uint8_t)((inst >> (i * 8)) & 0xffu);
+    p += snprintf(p, 4, " %02x", byte);
   }
   int ilen_max = 4;
   int space_len = ilen_max - ilen; // space_len空格长度
@@ -218,15 +197,33 @@ void sim_exit(void) {
 }
 
 int main(int argc, char** argv) {
-  if (argc < 2) {
-    fprintf(stderr, "Usage: %s [elf_file]\n", argv[0]);
+  const struct option table[] = {
+      {"elf", required_argument, NULL, 'e'},
+      {0, 0, NULL, 0},
+  };
+
+  int opt = 0;
+  while ((opt = getopt_long(argc, argv, "e:", table, NULL)) != -1) {
+    switch (opt) {
+    case 'e':
+      elf_file = optarg;
+      break;
+    default:
+      fprintf(stderr, "Usage: %s IMAGE.bin [-e IMAGE.elf]\n", argv[0]);
+      return 1;
+    }
+  }
+
+  if (optind >= argc) {
+    fprintf(stderr, "Usage: %s IMAGE.bin [-e IMAGE.elf]\n", argv[0]);
     return 1;
   }
 
-  img_file = argv[1];
+  img_file = argv[optind];
 
+  init_mem();
   img_size = load_img();
-  readelf(img_file);
+  readelf(elf_file);
 
   sim_init();
   sdb_mainloop();

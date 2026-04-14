@@ -25,6 +25,9 @@ wave:
 run:
 	$(BUILD_DIR)/Vtop $(ALL)
 
+gdb:
+	gdb $(BUILD_DIR)/Vtop
+
 .PHONY:  sim run clean wave
 
 clean: 
