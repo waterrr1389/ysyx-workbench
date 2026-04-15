@@ -25,6 +25,7 @@
 #define A0_REG_INDEX    10u
 #define GPR_SCOPE_NAME  "TOP.top.rf0"
 #define NPC_ITRACE 1
+static const char* REF_SO_FILE = "/home/frisk/ysyx-workbench/nemu/build/riscv32-nemu-interpreter-so";
 
 Vtop* top;
 VerilatedContext* contextp;
@@ -221,7 +222,7 @@ int main(int argc, char** argv) {
   init_mem();
   img_size = load_img();
   readelf(elf_file);
-  init_difftest(, img_size);
+  init_difftest(REF_SO_FILE, img_size);
 
   sim_init();
   sdb_mainloop();

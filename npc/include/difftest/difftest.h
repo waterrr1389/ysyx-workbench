@@ -9,4 +9,4 @@
 
 enum { DIFFTEST_TO_DUT, DIFFTEST_TO_REF };
 
-void init_difftest(char *ref_so_file, long img_size);
+void init_difftest(const char* ref_so_file, long img_size);
