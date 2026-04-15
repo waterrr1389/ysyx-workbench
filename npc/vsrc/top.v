@@ -4,35 +4,38 @@ module top(
     input [31:0] inst,
     output [31:0] pc
 );
-    //TODO: PC选择器,区分control transfer指令
-    /**
-        Program Counter
-        Data-32bit
-    **/
-    wire [31:0] pc_val, pc_next;
+
+    wire [31:0] pc_val, pc_next, pc_plus_4;
     wire pc_wen;
+    wire pc_sel; // 从 IDU 引出的 PC 选择信号
+
     assign pc_wen = !reset;
-    assign pc_next = pc_val + 32'd4;
+    assign pc_plus_4 = pc_val + 32'd4;
+    
+    // pc_sel 为 1 时，跳到 ALU 算出来的地址
+    assign pc_next = pc_sel ? {execution_result[31:1], 1'b0} : pc_plus_4;
+
     Reg #(32, 32'h80000000) programcouter (
         .clk(clk), 
         .rst(reset), 
         .dout(pc_val), 
         .din(pc_next), 
         .wen(pc_wen)
-        );
-
+    );
     assign pc = pc_val;
 
-    /** 
-        RegisterFIle
-        Data-32bit
-        Addr-5bit->32GPRS
-    **/
+
     wire [31:0] rs1_data, rs2_data;
+    wire wb_sel; // 从 IDU 引出的写回选择信号
+    wire [31:0] wb_data;
+
+    //  EXU_MUX，wb_sel 为 1 时写回 PC+4 (用于 JAL/JALR)
+    assign wb_data = wb_sel ? pc_plus_4 : execution_result;
+
     RegisterFile #(5, 32) rf0 (
-        .wen(reg_wen_wire), // 根据指令类型判断,写入内存时,en为0
+        .wen(reg_wen_wire), 
         .clk(clk),
-        .wdata(execution_result),
+        .wdata(wb_data), // 【修改】不再硬连到 execution_result，而是连到 MUX 输出
         .waddr(rd_addr),
         .raddr1(rs1_addr),
         .raddr2(rs2_addr),
@@ -40,44 +43,61 @@ module top(
         .out2(rs2_data)
     );
 
-    /*
-        我们暂时使用c++实现取指令
-    */
-
-    /*
-        IDU
-    */
     wire [4:0] rs1_addr, rs2_addr, rd_addr;
-    wire [3:0] exu_mode;
-    wire [11:0] imm_wire;
+    wire [3:0] sel;
+    wire [2:0] inst_type;
     wire reg_wen_wire;
+    wire [1:0] op1_sel, op2_sel;
+
     IDU #(32, 5) idu(
         .inst(inst),
         .rs1(rs1_addr),
         .rs2(rs2_addr),
         .rd(rd_addr),
-        .imm(imm_wire),
-        .sel(exu_mode),
+        .sel(sel),
+        .inst_type(inst_type),
         .reg_wen(reg_wen_wire),
-        .imm_or_reg(sel_imm_or_reg)
+        .op1_sel(op1_sel),
+        .op2_sel(op2_sel),
+        .wb_sel(wb_sel),
+        .pc_sel(pc_sel)
     );
 
-    wire sel_imm_or_reg;
-    // 根据解码出的信息,决定第二个操作数是寄存器值还是立即数
-    MuxKey #(2, 1, 32) mux_imm_or_reg (op2, sel_imm_or_reg, {
-        1'b0, rs2_data,
-        1'b1, {{20{imm_wire[11]}}, imm_wire}
-    });
+    // Immediate Gen
+    wire [31:0] imm;
+    IMME #(32) imme (
+        .inst_type(inst_type),
+        .inst(inst),
+        .imm(imm)
+    );
 
     wire [31:0] execution_result, op1, op2;
-    assign op1 = rs1_data;
+    OP1 #(32) op1_mux (
+        .rs1(rs1_data),
+        .pc(pc),
+        .op1_sel(op1_sel),
+        .op1(op1)
+    );
+
+    OP2 #(32) op2_mux (
+        .rs2(rs2_data),
+        .imm(imm),
+        .op2_sel(op2_sel),
+        .op2(op2)
+    );
+
     
-    // ALU
+    // alu
     EXU #(32) alu (
         .a(op1),
         .b(op2),
-        .sel(exu_mode),
+        .sel(sel),
         .out(execution_result)
     );
 
+    // EXU_MUX #(32) emux (
+    //     .inst_type(inst_type),
+    //     .
+
+    // );
 endmodule

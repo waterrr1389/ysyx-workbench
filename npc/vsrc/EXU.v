@@ -63,8 +63,11 @@ module EXU #(DATA_LEN = 1) (
                     out = { DATA_LEN{1'b0} };
                 end
             end
+            // 写内存(SW-空指令）
+                4'b1000: begin
+            end
             // ebreak 指令处理 (ebreak())
-            4'b1000: begin
+            4'b1111: begin
                 ebreak();
             end
             // 默认输出 0 (out = 0)
