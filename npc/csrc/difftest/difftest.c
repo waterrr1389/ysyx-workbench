@@ -1,9 +1,35 @@
 #include "difftest/difftest.h"
+#include "Vtop.h"
+#include "sim/sim_main.h"
+
+#define DIFFTEST_GPR_NR 32
+
+typedef struct {
+  word_t gpr[DIFFTEST_GPR_NR];
+  vaddr_t pc;
+} DifftestRegs;
 
 void (*ref_difftest_memcpy)(paddr_t addr, void *buf, size_t n, bool direction) = NULL;
 void (*ref_difftest_regcpy)(void *dut, bool direction) = NULL;
 void (*ref_difftest_exec)(uint64_t n) = NULL;
 void (*ref_difftest_raise_intr)(uint64_t NO) = NULL;
+
+static void reg_copy(void *dut) {
+  DifftestRegs *regs = reinterpret_cast<DifftestRegs *>(dut);
+  assert(regs != NULL);
+
+  memset(regs, 0, sizeof(*regs));
+
+  if (top == NULL) {
+    regs->pc = RESET_VECTOR;
+    return;
+  }
+
+  for (int reg_idx = 0; reg_idx < DIFFTEST_GPR_NR; reg_idx++) {
+    regs->gpr[reg_idx] = read_gpr(reg_idx);
+  }
+  regs->pc = top->pc;
+}
 
 void init_difftest(const char* ref_so_file, long img_size) {
   assert(ref_so_file != NULL);
@@ -38,5 +64,7 @@ void init_difftest(const char* ref_so_file, long img_size) {
   //     "If it is not necessary, you can turn it off in menuconfig.", ref_so_file);
 
   ref_difftest_memcpy(RESET_VECTOR, guest_to_host(RESET_VECTOR), img_size, DIFFTEST_TO_REF);
-  // ref_difftest_regcpy(pu, DIFFTEST_TO_REF);
+  DifftestRegs dut_regs = {};
+  reg_copy(&dut_regs);
+  ref_difftest_regcpy(&dut_regs, DIFFTEST_TO_REF);
 }
