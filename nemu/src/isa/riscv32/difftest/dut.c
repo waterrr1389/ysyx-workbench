@@ -15,10 +15,18 @@
 
 #include <isa.h>
 #include <cpu/difftest.h>
+#include <stdbool.h>
 #include "../local-include/reg.h"
 
 bool isa_difftest_checkregs(CPU_state *ref_r, vaddr_t pc) {
-  return false;
+  word_t *ref_gpr = ref_r->gpr;
+  word_t *real_gpr = (&cpu)->gpr;
+
+  for (int index = 0; index <= 32; index++) {
+    if (*(real_gpr+index) != *(ref_gpr+index)) return false;
+  }
+
+  return true;
 }
 
 void isa_difftest_attach() {
