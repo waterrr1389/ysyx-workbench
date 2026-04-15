@@ -8,6 +8,7 @@ extern "C" {
 
 #define PMEM_BASE 0x80000000u
 #define PMEM_SIZE 0x02000000u
+#define RESET_VECTOR 0x80000000u
 
 void init_mem(void);
 void free_mem(void);

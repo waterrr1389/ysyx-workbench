@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include "Vtop.h"
 #include "Vtop__Dpi.h"
+#include "difftest/difftest.h"
 #include "verilated.h"
 #include "verilated_fst_c.h"
 #include "svdpi.h"
@@ -19,10 +20,6 @@
 #include "trace/ftrace.h"
 #include "trace/iRingBuffer.h"
 
-#define ANSI_FG_RED     "\33[1;31m"
-#define ANSI_FG_GREEN   "\33[1;32m"
-#define ANSI_NONE       "\33[0m"
-#define ANSI_FMT(str, fmt) fmt str ANSI_NONE
 #define RESET_CYCLES    11
 #define NOP_INST        0x00000013u
 #define A0_REG_INDEX    10u
@@ -224,6 +221,7 @@ int main(int argc, char** argv) {
   init_mem();
   img_size = load_img();
   readelf(elf_file);
+  init_difftest(, img_size);
 
   sim_init();
   sdb_mainloop();

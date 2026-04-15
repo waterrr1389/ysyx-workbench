@@ -20,26 +20,29 @@
 
 __EXPORT void difftest_memcpy(paddr_t addr, void *buf, size_t n, bool direction) {
   if (direction == DIFFTEST_TO_REF) {
-
+    memcpy(guest_to_host(addr), buf, n);
   } else if (direction == DIFFTEST_TO_DUT) {
-
-  } else {
-
+    assert(0);
   }
 }
 
 __EXPORT void difftest_regcpy(void *dut, bool direction) {
+  word_t* dut_gpr = (word_t*)dut;
+  word_t* ref_gpr = cpu.gpr;
+
   if (direction == DIFFTEST_TO_REF) {
-
-  } else if (direction == DIFFTEST_TO_DUT) {
-
+    for (int reg_idx = 0; reg_idx < ARRLEN(cpu.gpr); reg_idx++) {
+    ref_gpr[reg_idx] = dut_gpr[reg_idx];
+    } 
   } else {
-
+    for (int reg_idx = 0; reg_idx < ARRLEN(cpu.gpr); reg_idx++) {
+      dut_gpr[reg_idx] = ref_gpr[reg_idx];
+    }
   }
 }
 
 __EXPORT void difftest_exec(uint64_t n) {
-  assert(0);
+  cpu_exec(n);
 }
 
 // We don't need to implement this right now
