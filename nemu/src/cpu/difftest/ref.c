@@ -39,7 +39,7 @@ __EXPORT void difftest_regcpy(void *dut, bool direction) {
 }
 
 __EXPORT void difftest_exec(uint64_t n) {
-  assert(1);
+  assert(0);
 }
 
 // We don't need to implement this right now
