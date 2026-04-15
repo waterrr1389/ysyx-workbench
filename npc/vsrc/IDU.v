@@ -24,7 +24,7 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
 
     // 2. 主译码器 (Main Decoder)
     wire [2:0] alu_op_type;
-    wire [12:0] ctrl_bundle; // 【修改】位宽扩展到 13 位
+    wire [12:0] ctrl_bundle;
 
     // 控制字打包格式: {op1_sel[1:0], op2_sel[1:0], wb_sel, pc_sel, inst_type[2:0], reg_wen, alu_op_type[2:0]}
     MuxKeyWithDefault #(9, 7, 13) MainDecoder (

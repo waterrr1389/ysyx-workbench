@@ -35,7 +35,7 @@ module top(
     RegisterFile #(5, 32) rf0 (
         .wen(reg_wen_wire), 
         .clk(clk),
-        .wdata(wb_data), // 【修改】不再硬连到 execution_result，而是连到 MUX 输出
+        .wdata(wb_data),
         .waddr(rd_addr),
         .raddr1(rs1_addr),
         .raddr2(rs2_addr),

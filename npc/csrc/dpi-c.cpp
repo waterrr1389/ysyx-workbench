@@ -1,13 +1,8 @@
-#include <stdio.h>
-#include "dpi-c.h"
-extern bool sim;
+#include "sim/dpi-c.h"
+#include "sim/sim_main.h"
 
-void ebreak() {
-    sim = false;
+void npc_trap(void) {
+  npc_state.state = NPC_END;
+  npc_state.halt_pc = current_pc;
+  sim = false;
 }
-
-// void display_reg(int regs[]) {
-//     for (int i = 1; i < 31; i++) {
-//         printf("$%d=%d\n", i, regs[i]);
-//     }
-// }

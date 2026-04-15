@@ -8,16 +8,25 @@ module RegisterFile #(ADDR_WIDTH = 1, DATA_WIDTH = 1) (
   output [DATA_WIDTH-1:0] out1,
   output [DATA_WIDTH-1:0] out2
 );
-  // import "DPI-C" function void display_reg(input int regs[]);
+  export "DPI-C" function get_gpr;
+
+  function int unsigned get_gpr(input int unsigned idx);
+    if (idx == 0) begin
+      return 32'h0;
+    end
+    else begin
+      return rf[idx];
+    end
+  endfunction
+
   reg [DATA_WIDTH-1:0] rf [2**ADDR_WIDTH-1:0];
   always @(posedge clk) begin
     if (wen) begin 
       rf[waddr] <= wdata;
       $display("$%d=%x\n", waddr, wdata);
     end
-    // display_reg(rf);
   end
-
+  
   wire check_zero1 = |raddr1;
   wire check_zero2 = |raddr2;
 
