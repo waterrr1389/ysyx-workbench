@@ -110,13 +110,14 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
 
     // 3.2 R-Type 基础译码：处理寄存器运算
     wire [3:0] alu_ctrl_r;
-    MuxKeyWithDefault #(6, 3, 4) RTypeMux (
+    MuxKeyWithDefault #(7, 3, 4) RTypeMux (
         alu_ctrl_r,
         funct3,        // 键：funct3
         4'b0000,       // 默认：ADD (涵盖了原先的 4'bxxxx 移位等状态，设为 0000 避免综合出 Latch)
         {
             3'b000, r_type_add_sub, // 动态路由到 ADD/SUB 结果
             3'b010, 4'b0110,        // SLT
+            3'b011, 4'b1101,        // SLTU
             3'b100, 4'b0101,        // XOR
             3'b101, r_type_srl_sra, // 动态路由至 sra/srl
             3'b110, 4'b0100,        // OR
@@ -126,18 +127,19 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
 
     // 3.3 I-Type ：立即数运算
     wire [3:0] alu_ctrl_i;
-    MuxKeyWithDefault #(7, 3, 4) ITypeMux (
+    MuxKeyWithDefault #(8, 3, 4) ITypeMux (
         alu_ctrl_i,
         funct3,        // 键：funct3
         4'b0000,       // 默认：ADD
         {
             3'b000, 4'b0000,        // ADDI
             3'b010, 4'b0110,        // SLTI
+            3'b011, 4'b1101,        // SLTIU
             3'b100, 4'b0101,        // XORI
             3'b110, 4'b0100,        // ORI
             3'b111, 4'b0011,        // ANDI
-            3'b001, 4'b1001,        // slli
-            3'b101, i_type_srli_srai  // srli, srai
+            3'b001, 4'b1001,        // SLLI
+            3'b101, i_type_srli_srai  // SRLI, SRAI
         }
     );
 

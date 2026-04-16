@@ -81,7 +81,15 @@ module EXU #(DATA_LEN = 1) (
             end
             // Load
             4'b1100: begin
-                
+            end
+            // 无符号数比较(sltu/sltiu, a < b)
+            // 结果编码为 0/1
+            4'b1101: begin
+                if ($unsigned(a) < $unsigned(b)) begin
+                    out = {{(DATA_LEN-1){1'b0}}, 1'b1};
+                end else begin
+                    out = {DATA_LEN{1'b0}};
+                end
             end
             // ebreak 指令处理 (ebreak())
             4'b1111: begin
