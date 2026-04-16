@@ -23,7 +23,6 @@ module RegisterFile #(ADDR_WIDTH = 1, DATA_WIDTH = 1) (
   always @(posedge clk) begin
     if (wen && |waddr) begin
       rf[waddr] <= wdata;
-      $display("$%d=%x\n", waddr, wdata);
     end
   end
   
