@@ -64,7 +64,24 @@ module EXU #(DATA_LEN = 1) (
                 end
             end
             // 写内存(SW-空指令）
-                4'b1000: begin
+            4'b1000: begin
+
+            end
+            // Shift left
+            4'b1001: begin
+                out =  a << b;
+            end
+            // 逻辑右移
+            4'b1010: begin
+                out = a >> b;
+            end
+            // 算术右移
+            4'b1011: begin
+                out = a >>> b;
+            end
+            // Load
+            4'b1100: begin
+                
             end
             // ebreak 指令处理 (ebreak())
             4'b1111: begin
