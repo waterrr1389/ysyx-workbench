@@ -63,7 +63,7 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
         reg_wen, mem_en, mem_we, alu_decode_class} = ctrl_bundle;
 
     MuxKeyWithDefault #(6, 3, 3) BranchOpMux (
-        branch_op,
+        branch_op, // 作为输出传入ALU,根据指令类型判断是否需要跳转
         funct3,
         `BR_NONE,
         {

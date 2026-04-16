@@ -114,6 +114,7 @@ module EXU #(DATA_LEN = 1) (
 
     always @(*) begin
         load_result = {DATA_LEN{1'b0}};
+        // Load 指令时，内存写使能应该为 0
         if (mem_en && !mem_we) begin
             case (mem_size)
                 `MEM_SIZE_B: begin

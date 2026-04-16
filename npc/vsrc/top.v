@@ -22,6 +22,8 @@ module top(
     wire [31:0] mem_wdata;
     wire [31:0] load_result;
     wire [31:0] wb_data;
+    wire [31:0] branch_next;
+    wire [31:0] jump_target;
     wire [3:0] mem_wmask;
 
     wire [4:0] rs1_addr, rs2_addr, rd_addr;
@@ -39,13 +41,39 @@ module top(
     assign pc_plus_4 = pc_val + 32'd4;
     assign inst = reset ? 32'h00000013 : pmem_read(pc_val);
     assign mem_rdata = (mem_en && !mem_we) ? pmem_read(mem_addr) : 32'b0;
-    assign wb_data = (wb_src == `WB_SRC_PC4) ? pc_plus_4
-        : (wb_src == `WB_SRC_LOAD) ? load_result
-        : alu_result;
+    assign jump_target = {alu_result[31:1], 1'b0};
 
-    assign pc_next = (pc_src == `PC_SRC_TARGET) ? {alu_result[31:1], 1'b0}
-        : (pc_src == `PC_SRC_BRANCH) ? (branch_taken ? alu_result : pc_plus_4)
-        : pc_plus_4;
+    MuxKeyWithDefault #(2, 1, 32) BranchNextMux (
+        branch_next,
+        branch_taken,
+        pc_plus_4,
+        {
+            1'b0, pc_plus_4,
+            1'b1, alu_result
+        }
+    );
+
+    MuxKeyWithDefault #(3, 2, 32) WbMux (
+        wb_data,
+        wb_src,
+        alu_result,
+        {
+            `WB_SRC_ALU, alu_result,
+            `WB_SRC_PC4, pc_plus_4,
+            `WB_SRC_LOAD, load_result
+        }
+    );
+
+    MuxKeyWithDefault #(3, 2, 32) PcMux (
+        pc_next,
+        pc_src,
+        pc_plus_4,
+        {
+            `PC_SRC_SEQ, pc_plus_4,
+            `PC_SRC_TARGET, jump_target,
+            `PC_SRC_BRANCH, branch_next
+        }
+    );
 
     Reg #(32, 32'h80000000) programcouter (
         .clk(clk),
