@@ -15,9 +15,6 @@ module top(
     assign pc_plus_4 = pc_val + 32'd4;
     assign inst = reset ? 32'h00000013 : pmem_read(pc_val);
     
-    // pc_sel 为 1 时，跳到 ALU 算出来的地址
-    assign pc_next = pc_sel ? {execution_result[31:1], 1'b0} : pc_plus_4;
-
     Reg #(32, 32'h80000000) programcouter (
         .clk(clk), 
         .rst(reset), 
@@ -35,6 +32,7 @@ module top(
     wire [2:0] funct3 = inst[14:12];
     wire is_load = opcode == 7'b0000011;
     wire is_store = opcode == 7'b0100011;
+    wire is_branch = opcode == 7'b1100011;
 
     wire [31:0] aligned_addr = {execution_result[31:2], 2'b00};
     wire [1:0] byte_off = execution_result[1:0];
@@ -100,6 +98,26 @@ module top(
         .op2_sel(op2_sel),
         .op2(op2)
     );
+
+    reg branch_taken;
+    wire [31:0] branch_target = pc_val + imm;
+
+    // B-type 在 top 中直接决定下一条 PC，避免改动现有 ALU/控制整体结构
+    always @(*) begin
+        case (funct3)
+            3'b000: branch_taken = (rs1_data == rs2_data); // beq
+            3'b001: branch_taken = (rs1_data != rs2_data); // bne
+            3'b100: branch_taken = ($signed(rs1_data) < $signed(rs2_data)); // blt
+            3'b101: branch_taken = ($signed(rs1_data) >= $signed(rs2_data)); // bge
+            3'b110: branch_taken = (rs1_data < rs2_data); // bltu
+            3'b111: branch_taken = (rs1_data >= rs2_data); // bgeu
+            default: branch_taken = 1'b0;
+        endcase
+    end
+
+    assign pc_next = is_branch
+        ? (branch_taken ? branch_target : pc_plus_4)
+        : (pc_sel ? {execution_result[31:1], 1'b0} : pc_plus_4);
 
     
     // alu
