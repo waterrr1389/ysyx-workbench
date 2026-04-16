@@ -161,7 +161,5 @@ void cpu_exec(uint64_t n) {
     #ifdef CONFIG_ITRACE
     iRingBufferDump();
     #endif
-
-    ftrace(cpu.pc);
   }
 }
