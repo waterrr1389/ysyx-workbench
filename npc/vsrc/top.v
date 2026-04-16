@@ -13,7 +13,7 @@ module top(
 
     assign pc_wen = !reset;
     assign pc_plus_4 = pc_val + 32'd4;
-    assign inst = pmem_read(pc_val);
+    assign inst = reset ? 32'h00000013 : pmem_read(pc_val);
     
     // pc_sel 为 1 时，跳到 ALU 算出来的地址
     assign pc_next = pc_sel ? {execution_result[31:1], 1'b0} : pc_plus_4;
@@ -38,7 +38,7 @@ module top(
 
     wire [31:0] aligned_addr = {execution_result[31:2], 2'b00};
     wire [1:0] byte_off = execution_result[1:0];
-    wire [31:0] mem_word = pmem_read(aligned_addr);
+    wire [31:0] mem_word = is_load ? pmem_read(aligned_addr) : 32'b0;
     reg [31:0] load_data;
 
     reg [31:0] store_wdata;
