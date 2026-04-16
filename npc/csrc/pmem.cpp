@@ -31,7 +31,7 @@ static void out_of_bound(word_t addr) {
       addr, (word_t)PMEM_BASE, (word_t)(PMEM_BASE + PMEM_SIZE - 1), current_pc);
 }
 
-word_t pmem_read(word_t addr, int len) {
+word_t host_pmem_read(word_t addr, int len) {
   Assert(len >= 1 && len <= 4, "Unsupported pmem read length %d", len);
 
   word_t last = addr + (word_t)len - 1;
@@ -47,7 +47,7 @@ word_t pmem_read(word_t addr, int len) {
   return ret;
 }
 
-void pmem_write(word_t addr, int len, word_t data) {
+void host_pmem_write(word_t addr, int len, word_t data) {
   Assert(len >= 1 && len <= 4, "Unsupported pmem write length %d", len);
 
   word_t last = addr + (word_t)len - 1;

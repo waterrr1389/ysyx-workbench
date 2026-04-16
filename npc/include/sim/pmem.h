@@ -14,8 +14,8 @@ void init_mem(void);
 void free_mem(void);
 uint8_t* guest_to_host(word_t addr);
 bool in_pmem(word_t addr);
-word_t pmem_read(word_t addr, int len);
-void pmem_write(word_t addr, int len, word_t data);
+word_t host_pmem_read(word_t addr, int len);
+void host_pmem_write(word_t addr, int len, word_t data);
 
 #ifdef __cplusplus
 }

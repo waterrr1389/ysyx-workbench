@@ -107,11 +107,9 @@ long load_img(void) {
   return size;
 }
 
-static void fetch_inst() {
+static void trace_inst() {
   current_pc = top->pc;
-  uint32_t inst = pmem_read(current_pc, 4);
-
-  top->inst = inst;
+  uint32_t inst = host_pmem_read(current_pc, 4);
 
 #ifdef NPC_FTRACE
   ftrace_check(current_pc, inst);
@@ -150,7 +148,7 @@ static void step_and_dump_wave() {
 }
 
 void step_one_cycle(void) {
-  fetch_inst();
+  trace_inst();
   step_and_dump_wave();
   step_and_dump_wave();
 }
@@ -169,7 +167,6 @@ void sim_init(void) {
 
   top->reset = 1;
   top->clk = 0;
-  top->inst = 0;
 
   init_npc_state();
   init_gpr_scope();
