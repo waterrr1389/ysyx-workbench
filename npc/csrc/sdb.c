@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <readline/history.h>
 #include <readline/readline.h>
 #include "sim/sdb.h"
@@ -105,12 +106,10 @@ static int cmd_info(char* args) {
 }
 
 void sdb_mainloop(void) {
-	// see parse_args in monitor/monitor.c
-	// In normal case, the value of is_batch_mode is false
-	// if (is_batch_mode) {
-	// 	cmd_c(NULL);
-	// 	return;
-	// }
+	if (!isatty(STDIN_FILENO)) {
+		cmd_c(NULL);
+		return;
+	}
 
   while(sim) {
   	for (char *str; (str = rl_gets()) != NULL;) {
