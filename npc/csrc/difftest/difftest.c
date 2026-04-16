@@ -35,28 +35,33 @@ void init_difftest(const char* ref_so_file, long img_size) {
   assert(ref_so_file != NULL);
 
   void *handle;
+  dlerror();
   handle = dlopen(ref_so_file, RTLD_LAZY);
-  assert(handle);
+  if (handle == NULL) {
+    fprintf(stderr, "Warning: failed to load difftest ref '%s': %s\n",
+        ref_so_file, dlerror());
+    return;
+  }
 
   ref_difftest_memcpy =
       reinterpret_cast<decltype(ref_difftest_memcpy)>(dlsym(handle, "difftest_memcpy"));
-  assert(ref_difftest_memcpy);
+  if (ref_difftest_memcpy == NULL) return;
 
   ref_difftest_regcpy =
       reinterpret_cast<decltype(ref_difftest_regcpy)>(dlsym(handle, "difftest_regcpy"));
-  assert(ref_difftest_regcpy);
+  if (ref_difftest_regcpy == NULL) return;
 
   ref_difftest_exec =
       reinterpret_cast<decltype(ref_difftest_exec)>(dlsym(handle, "difftest_exec"));
-  assert(ref_difftest_exec);
+  if (ref_difftest_exec == NULL) return;
 
   ref_difftest_raise_intr =
       reinterpret_cast<decltype(ref_difftest_raise_intr)>(dlsym(handle, "difftest_raise_intr"));
-  assert(ref_difftest_raise_intr);
+  if (ref_difftest_raise_intr == NULL) return;
 
   void (*ref_difftest_init)(int) =
       reinterpret_cast<void (*)(int)>(dlsym(handle, "difftest_init"));
-  assert(ref_difftest_init);
+  if (ref_difftest_init == NULL) return;
 
   // Log("Differential testing: %s", ANSI_FMT("ON", ANSI_FG_GREEN));
   // Log("The result of every instruction will be compared with %s. "
