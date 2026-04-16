@@ -23,7 +23,7 @@ module EXU #(DATA_LEN = 1) (
         case(sel)
             // 加法 (a + b)
             4'b0000: begin
-                out = a + 1;
+                out = a + b;
             end 
             // 减法 (a - b)
             4'b0001: begin
