@@ -24,8 +24,17 @@
 #define NOP_INST        0x00000013u
 #define A0_REG_INDEX    10u
 #define GPR_SCOPE_NAME  "TOP.top.rf0"
-#define NPC_ITRACE 1
 static const char* REF_SO_FILE = "/home/frisk/ysyx-workbench/nemu/build/riscv32-nemu-interpreter-so";
+
+#ifndef NPC_ITRACE
+#define NPC_ITRACE 0
+#endif
+
+#ifndef NPC_FTRACE
+#define NPC_FTRACE 0
+#endif
+
+#define NPC_NEED_INST_TRACE (NPC_ITRACE || NPC_FTRACE)
 
 Vtop* top;
 VerilatedContext* contextp;
@@ -74,7 +83,9 @@ static void cleanup() {
   tfp->close();
   delete top;
   delete contextp;
+#if NPC_ITRACE
   free(inst_buf);
+#endif
   free_mem();
 }
 
@@ -109,13 +120,14 @@ long load_img(void) {
 
 static void trace_inst() {
   current_pc = top->pc;
+#if NPC_NEED_INST_TRACE
   uint32_t inst = host_pmem_read(current_pc, 4);
 
-#ifdef NPC_FTRACE
+#if NPC_FTRACE
   ftrace_check(current_pc, inst);
 #endif
 
-#ifdef NPC_ITRACE
+#if NPC_ITRACE
 	char *p = inst_buf;
   p += snprintf(p, 128, FMT_WORD ":", current_pc);
   int ilen = 4; 
@@ -138,6 +150,7 @@ static void trace_inst() {
               (const uint8_t*)&inst, ilen);
   iRingBufferWrite(p, disassemble_size);
 #endif
+#endif
 }
 
 static void step_and_dump_wave() {
@@ -159,8 +172,10 @@ void sim_init(void) {
   tfp = new VerilatedFstC;
   Verilated::traceEverOn(true);
 
+#if NPC_ITRACE
 	inst_buf = (char*)malloc(128);
 	Assert(inst_buf, "Failed to alloc memory for itarce buffer");
+#endif
 
   top->trace(tfp, 99);
   tfp->open("waveform.fst");
@@ -177,15 +192,15 @@ void sim_init(void) {
   top->reset = 0;
   current_pc = top->pc;
 
+#if NPC_ITRACE
   init_disasm();
-#ifdef NPC_ITRACE
   iRingBufferInit();
 #endif
 }
 
 void sim_exit(void) {
   print_trap_result();
-#ifdef NPC_ITRACE
+#if NPC_ITRACE
   iRingBufferDump();
 #endif
   cleanup();
@@ -222,7 +237,9 @@ int main(int argc, char** argv) {
 
   init_mem();
   img_size = load_img();
+#if NPC_FTRACE
   readelf(elf_file);
+#endif
   init_difftest(REF_SO_FILE, img_size);
 
   sim_init();
