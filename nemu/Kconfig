@@ -116,6 +116,10 @@ config FTRACE
   bool "ftrace"
   default n
 
+config MTRACE
+  bool "mtrace"
+  default n
+
 config WATCHPOINT
   bool "watchpoint"
   default n
@@ -168,16 +172,6 @@ config ITRACE
 config ITRACE_COND
   depends on ITRACE
   string "Only trace instructions when the condition is true"
-  default "true"
-
-config MTRACE
-  depends on TRACE && TARGET_NATIVE_ELF
-  bool "Enable memory tracer"
-  default n
-
-config MTRACE_COND
-  depends on MTRACE
-  string "Only trace memory accesses when the condition is true"
   default "true"
 
 
