@@ -162,8 +162,12 @@ static void step_and_dump_wave() {
 
 void step_one_cycle(void) {
   trace_inst();
+  uint32_t pc = current_pc;
   step_and_dump_wave();
   step_and_dump_wave();
+  if (sim) {
+    difftest_step(pc, top->pc);
+  }
 }
 
 void sim_init(void) {
