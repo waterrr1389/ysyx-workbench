@@ -69,15 +69,15 @@ module EXU #(DATA_LEN = 1) (
             end
             // Shift left
             4'b1001: begin
-                out =  a << b;
+                out = a << b[4:0];
             end
             // 逻辑右移
             4'b1010: begin
-                out = a >> b;
+                out = a >> b[4:0];
             end
             // 算术右移
             4'b1011: begin
-                out = a >>> b;
+                out = $signed(a) >>> b[4:0];
             end
             // Load
             4'b1100: begin
