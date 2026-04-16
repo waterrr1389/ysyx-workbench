@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <readline/history.h>
 #include <readline/readline.h>
 #include "sim/sdb.h"
@@ -9,6 +8,8 @@
 
 #define ARRLEN(arr) (int)(sizeof(arr) / sizeof(arr[0]))
 #define NR_CMD ARRLEN(cmd_table)
+
+static int is_batch_mode = false;
 
 static int cmd_c(char* args);
 static int cmd_q(char* args);
@@ -105,8 +106,12 @@ static int cmd_info(char* args) {
 	return 0;
 }
 
+void sdb_set_batch_mode(void) {
+  is_batch_mode = true;
+}
+
 void sdb_mainloop(void) {
-	if (!isatty(STDIN_FILENO)) {
+	if (is_batch_mode) {
 		cmd_c(NULL);
 		return;
 	}

@@ -193,24 +193,28 @@ void sim_exit(void) {
 
 int main(int argc, char** argv) {
   const struct option table[] = {
+      {"batch", no_argument, NULL, 'b'},
       {"elf", required_argument, NULL, 'e'},
       {0, 0, NULL, 0},
   };
 
   int opt = 0;
-  while ((opt = getopt_long(argc, argv, "e:", table, NULL)) != -1) {
+  while ((opt = getopt_long(argc, argv, "be:", table, NULL)) != -1) {
     switch (opt) {
+    case 'b':
+      sdb_set_batch_mode();
+      break;
     case 'e':
       elf_file = optarg;
       break;
     default:
-      fprintf(stderr, "Usage: %s IMAGE.bin [-e IMAGE.elf]\n", argv[0]);
+      fprintf(stderr, "Usage: %s [-b] IMAGE.bin [-e IMAGE.elf]\n", argv[0]);
       return 1;
     }
   }
 
   if (optind >= argc) {
-    fprintf(stderr, "Usage: %s IMAGE.bin [-e IMAGE.elf]\n", argv[0]);
+    fprintf(stderr, "Usage: %s [-b] IMAGE.bin [-e IMAGE.elf]\n", argv[0]);
     return 1;
   }
 

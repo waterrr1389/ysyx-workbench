@@ -195,9 +195,4 @@ module top(
         end
     end
 
-    // EXU_MUX #(32) emux (
-    //     .inst_type(inst_type),
-    //     .
-
-    // );
 endmodule
