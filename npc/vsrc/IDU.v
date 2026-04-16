@@ -22,9 +22,8 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
 
     wire [6:0] opcode = inst[6:0];
     wire [2:0] funct3 = inst[14:12];
-    /* verilator lint_off UNUSEDSIGNAL */
     wire [6:0] funct7 = inst[31:25];
-    /* verilator lint_on UNUSEDSIGNAL */
+    
     wire is_load = opcode == 7'b0000011;
 
     assign rs1 = inst[19:15];

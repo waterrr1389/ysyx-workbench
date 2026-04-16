@@ -53,6 +53,17 @@ module top(
         }
     );
 
+    MuxKeyWithDefault #(3, 2, 32) PcMux (
+        pc_next,
+        pc_src,
+        pc_plus_4,
+        {
+            `PC_SRC_SEQ, pc_plus_4,
+            `PC_SRC_TARGET, jump_target,
+            `PC_SRC_BRANCH, branch_next
+        }
+    );
+    
     MuxKeyWithDefault #(3, 2, 32) WbMux (
         wb_data,
         wb_src,
@@ -64,16 +75,6 @@ module top(
         }
     );
 
-    MuxKeyWithDefault #(3, 2, 32) PcMux (
-        pc_next,
-        pc_src,
-        pc_plus_4,
-        {
-            `PC_SRC_SEQ, pc_plus_4,
-            `PC_SRC_TARGET, jump_target,
-            `PC_SRC_BRANCH, branch_next
-        }
-    );
 
     Reg #(32, 32'h80000000) programcouter (
         .clk(clk),
