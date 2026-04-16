@@ -67,16 +67,17 @@ uint32_t read_gpr(uint32_t index) {
 }
 
 static void print_trap_result() {
-  if (npc_state.state != NPC_END) {
-    return;
+  if (npc_state.state == NPC_END) {
+    npc_state.halt_ret = read_gpr(A0_REG_INDEX);
+    printf("npc: %s at pc = 0x%08x\n",
+        npc_state.halt_ret == 0
+            ? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN)
+            : ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED),
+        npc_state.halt_pc);
+  } else if (npc_state.state == NPC_ABORT) {
+    printf("npc: %s at pc = 0x%08x\n",
+        ANSI_FMT("ABORT", ANSI_FG_RED), npc_state.halt_pc);
   }
-
-  npc_state.halt_ret = read_gpr(A0_REG_INDEX);
-  printf("npc: %s at pc = 0x%08x\n",
-      npc_state.halt_ret == 0
-          ? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN)
-          : ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED),
-      npc_state.halt_pc);
 }
 
 static void cleanup() {
@@ -210,6 +211,19 @@ void sim_exit(void) {
   cleanup();
 }
 
+int sim_status(void) {
+  switch (npc_state.state) {
+    case NPC_END:
+      return npc_state.halt_ret == 0 ? 0 : 1;
+    case NPC_ABORT:
+      return 1;
+    case NPC_QUIT:
+      return 0;
+    default:
+      return 1;
+  }
+}
+
 int main(int argc, char** argv) {
   const struct option table[] = {
       {"batch", no_argument, NULL, 'b'},
@@ -250,5 +264,5 @@ int main(int argc, char** argv) {
   sdb_mainloop();
   sim_exit();
 
-  return 0;
+  return sim_status();
 }
