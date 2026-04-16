@@ -22,7 +22,7 @@ module top(
     wire [31:0] mem_wdata;
     wire [31:0] load_result;
     wire [31:0] wb_data;
-    wire [7:0] mem_wmask;
+    wire [3:0] mem_wmask;
 
     wire [4:0] rs1_addr, rs2_addr, rd_addr;
     wire [3:0] sel;
@@ -128,7 +128,7 @@ module top(
 
     always @(posedge clk) begin
         if (!reset && mem_en && mem_we) begin
-            pmem_write(mem_addr, mem_wdata, mem_wmask[7:0]);
+            pmem_write(mem_addr, mem_wdata, {4'b0, mem_wmask});
         end
     end
 

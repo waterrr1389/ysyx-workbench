@@ -17,7 +17,7 @@ module EXU #(DATA_LEN = 1) (
     output reg branch_taken,
     output [DATA_LEN-1:0] mem_addr,
     output reg [DATA_LEN-1:0] mem_wdata,
-    output reg [7:0] mem_wmask,
+    output reg [3:0] mem_wmask,
     output reg [DATA_LEN-1:0] load_result
 );
     wire [DATA_LEN:0] sub_tmp;
@@ -143,6 +143,7 @@ module EXU #(DATA_LEN = 1) (
                             : {{16{mem_rdata[15]}}, mem_rdata[15:0]};
                     end
                 end
+                // size == word 即 4 字节
                 default: begin
                     load_result = mem_rdata;
                 end
@@ -152,12 +153,12 @@ module EXU #(DATA_LEN = 1) (
 
     always @(*) begin
         mem_wdata = rs2_data;
-        mem_wmask = 8'b0;
+        mem_wmask = 4'b0;
 
         if (mem_en && mem_we) begin
             case (mem_size)
                 `MEM_SIZE_B: begin
-                    mem_wmask = 8'b0000_0001 << byte_off;
+                    mem_wmask = 4'b0001 << byte_off;
                     case (byte_off)
                         2'b00: mem_wdata = {24'b0, rs2_data[7:0]};
                         2'b01: mem_wdata = {16'b0, rs2_data[7:0], 8'b0};
@@ -166,13 +167,13 @@ module EXU #(DATA_LEN = 1) (
                     endcase
                 end
                 `MEM_SIZE_H: begin
-                    mem_wmask = byte_off[1] ? 8'b0000_1100 : 8'b0000_0011;
+                    mem_wmask = byte_off[1] ? 4'b1100 : 4'b0011;
                     mem_wdata = byte_off[1]
                         ? {rs2_data[15:0], 16'b0}
                         : {16'b0, rs2_data[15:0]};
                 end
                 default: begin
-                    mem_wmask = 8'b0000_1111;
+                    mem_wmask = 4'b1111;
                     mem_wdata = rs2_data;
                 end
             endcase
