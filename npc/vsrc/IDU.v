@@ -1,3 +1,5 @@
+`include "alu_ops.vh"
+
 module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
     input [DATA_LEN-1:0] inst,
     output [REG_ADDR_LEN-1:0] rs1,
@@ -25,6 +27,12 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
     // 2. 主译码器 (Main Decoder)
     wire [2:0] alu_op_type;
     wire [12:0] ctrl_bundle;
+    localparam [2:0] ALU_CLASS_ADD     = 3'b000;
+    localparam [2:0] ALU_CLASS_BRANCH  = 3'b001;
+    localparam [2:0] ALU_CLASS_RTYPE   = 3'b010;
+    localparam [2:0] ALU_CLASS_ITYPE   = 3'b011;
+    localparam [2:0] ALU_CLASS_STORE   = 3'b100;
+    localparam [2:0] ALU_CLASS_EBREAK  = 3'b111;
 
     // 控制字打包格式: {op1_sel[1:0], op2_sel[1:0], wb_sel, pc_sel, inst_type[2:0], reg_wen, alu_op_type[2:0]}
     MuxKeyWithDefault #(10, 7, 13) MainDecoder (
@@ -77,10 +85,10 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
     MuxKeyWithDefault #(2, 1, 4) RTypeAddSubMux (
         r_type_add_sub,
         funct7[5],     // 键：funct7 的第 5 位
-        4'b0000,
+        `ALU_ADD,
         {
-            1'b0, 4'b0000, // 默认ADD
-            1'b1, 4'b0001 // 若 funct7[5] 为 1，则是 SUB
+            1'b0, `ALU_ADD, // 默认ADD
+            1'b1, `ALU_SUB // 若 funct7[5] 为 1，则是 SUB
         }
     );
 
@@ -89,10 +97,10 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
     MuxKeyWithDefault #(2, 1, 4) RTypeShiftMux (
         r_type_srl_sra,
         funct7[5],     // 键：funct7 的第 5 位
-        4'b0000,
+        `ALU_ADD,
         {
-            1'b0, 4'b1010,
-            1'b1, 4'b1011 
+            1'b0, `ALU_SRL,
+            1'b1, `ALU_SRA 
         }
     );
 
@@ -101,10 +109,10 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
     MuxKeyWithDefault #(2, 1, 4) ITypeShiftMux (
         i_type_srli_srai,
         funct7[5],     // 键：funct7 的第 5 位
-        4'b0000,
+        `ALU_ADD,
         {
-            1'b0, 4'b1010, // 逻辑右移
-            1'b1, 4'b1011  // 算术右移 
+            1'b0, `ALU_SRL, // 逻辑右移
+            1'b1, `ALU_SRA  // 算术右移 
         }
     );
 
@@ -113,16 +121,16 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
     MuxKeyWithDefault #(8, 3, 4) RTypeMux (
         alu_ctrl_r,
         funct3,        // 键：funct3
-        4'b0000,       // 默认：ADD (涵盖了原先的 4'bxxxx 移位等状态，设为 0000 避免综合出 Latch)
+        `ALU_ADD,      // 默认：ADD
         {
             3'b000, r_type_add_sub, // 动态路由到 ADD/SUB 结果
-            3'b001, 4'b1001,        // SLL
-            3'b010, 4'b0110,        // SLT
-            3'b011, 4'b1101,        // SLTU
-            3'b100, 4'b0101,        // XOR
+            3'b001, `ALU_SLL,       // SLL
+            3'b010, `ALU_SLT,       // SLT
+            3'b011, `ALU_SLTU,      // SLTU
+            3'b100, `ALU_XOR,       // XOR
             3'b101, r_type_srl_sra, // 动态路由至 sra/srl
-            3'b110, 4'b0100,        // OR
-            3'b111, 4'b0011         // AND
+            3'b110, `ALU_OR,        // OR
+            3'b111, `ALU_AND        // AND
         }
     );
 
@@ -131,15 +139,15 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
     MuxKeyWithDefault #(8, 3, 4) ITypeMux (
         alu_ctrl_i,
         funct3,        // 键：funct3
-        4'b0000,       // 默认：ADD
+        `ALU_ADD,      // 默认：ADD
         {
-            3'b000, 4'b0000,        // ADDI
-            3'b010, 4'b0110,        // SLTI
-            3'b011, 4'b1101,        // SLTIU
-            3'b100, 4'b0101,        // XORI
-            3'b110, 4'b0100,        // ORI
-            3'b111, 4'b0011,        // ANDI
-            3'b001, 4'b1001,        // SLLI
+            3'b000, `ALU_ADD,       // ADDI
+            3'b010, `ALU_SLT,       // SLTI
+            3'b011, `ALU_SLTU,      // SLTIU
+            3'b100, `ALU_XOR,       // XORI
+            3'b110, `ALU_OR,        // ORI
+            3'b111, `ALU_AND,       // ANDI
+            3'b001, `ALU_SLL,       // SLLI
             3'b101, i_type_srli_srai  // SRLI, SRAI
         }
     );
@@ -148,9 +156,9 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
     MuxKeyWithDefault #(1, 3, 4) BTypeMux(
         alu_ctrl_b,
         funct3,
-        4'b0000, // 默认
+        `ALU_ADD, // 默认
         {
-            3'b000, 4'b1100
+            3'b000, `ALU_BRANCH
         }
     );
 
@@ -158,9 +166,9 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
     MuxKeyWithDefault #(1, 3, 4) STypeMux(
         alu_ctrl_s,
         funct3,
-        4'b0000, // 默认
+        `ALU_ADD, // 默认
         {
-            3'b000, 4'b1000 // SW
+            3'b000, `ALU_STORE // SW
         }
     );
 
@@ -168,14 +176,14 @@ module IDU #(DATA_LEN = 32, REG_ADDR_LEN = 5) (
     MuxKeyWithDefault #(6, 3, 4) AluCtrlMux (
         sel,
         alu_op_type,   // 键：alu_op_type
-        4'b0000,       // 默认：Force ADD (对应 000 / 100 等状态，Load/Store/LUI/AUIPC/JAL)
+        `ALU_ADD,      // 默认：Force ADD (对应 load/store/lui/auipc/jal)
         {
-            3'b000, 4'b0000,    // 默认：ADD
-            3'b001, alu_ctrl_b,    // Branch: 强制 SUB
-            3'b010, alu_ctrl_r, // 将输出路由至 R-Type 的译码结果
-            3'b011, alu_ctrl_i, // 将输出路由至 I-Type 的译码结果
-            3'b100, alu_ctrl_s, // 将输出路由至 S-Type 的译码结果
-            3'b111, 4'b1111    // ebreak
+            ALU_CLASS_ADD, `ALU_ADD,
+            ALU_CLASS_BRANCH, alu_ctrl_b,
+            ALU_CLASS_RTYPE, alu_ctrl_r,
+            ALU_CLASS_ITYPE, alu_ctrl_i,
+            ALU_CLASS_STORE, alu_ctrl_s,
+            ALU_CLASS_EBREAK, `ALU_EBREAK
         }
     );
 
