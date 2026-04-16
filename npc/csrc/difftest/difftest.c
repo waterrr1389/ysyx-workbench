@@ -53,6 +53,11 @@ static void report_mismatch(vaddr_t pc, vaddr_t npc, const DifftestRegs *ref,
   fprintf(stderr, "\nDiffTest mismatch at pc = " FMT_WORD ", npc = " FMT_WORD
       ", inst = 0x%08x\n", pc, npc, inst);
 
+  if (ref->pc != dut->pc) {
+    fprintf(stderr, "PC mismatch: ref.pc = " FMT_WORD ", dut.pc = " FMT_WORD "\n",
+        ref->pc, dut->pc);
+  }
+
   if (mismatch_idx >= 0) {
     fprintf(stderr, "First mismatch: %s, ref = " FMT_WORD ", dut = " FMT_WORD "\n",
         reg_names[mismatch_idx], ref->gpr[mismatch_idx], dut->gpr[mismatch_idx]);
@@ -64,6 +69,14 @@ static void report_mismatch(vaddr_t pc, vaddr_t npc, const DifftestRegs *ref,
 
 static bool checkregs(const DifftestRegs *ref, const DifftestRegs *dut,
                       vaddr_t pc, vaddr_t npc) {
+  if (ref->pc != dut->pc) {
+    report_mismatch(pc, npc, ref, dut, -1);
+    npc_state.state = NPC_ABORT;
+    npc_state.halt_pc = pc;
+    sim = false;
+    return false;
+  }
+
   for (int i = 0; i < DIFFTEST_GPR_NR; i++) {
     if (ref->gpr[i] != dut->gpr[i]) {
       report_mismatch(pc, npc, ref, dut, i);
