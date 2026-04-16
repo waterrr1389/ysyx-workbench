@@ -41,22 +41,6 @@ static void out_of_bound(paddr_t addr) {
       addr, PMEM_LEFT, PMEM_RIGHT, cpu.pc);
 }
 
-#ifdef CONFIG_MTRACE
-static void mtrace_read(paddr_t addr, int len, word_t data) {
-  if (MTRACE_COND) {
-    log_write("mtrace: pc = " FMT_WORD ", read  " FMT_PADDR ", len = %d, data = " FMT_WORD "\n",
-        cpu.pc, addr, len, data);
-  }
-}
-
-static void mtrace_write(paddr_t addr, int len, word_t data) {
-  if (MTRACE_COND) {
-    log_write("mtrace: pc = " FMT_WORD ", write " FMT_PADDR ", len = %d, data = " FMT_WORD "\n",
-        cpu.pc, addr, len, data);
-  }
-}
-#endif
-
 void init_mem() {
 #if   defined(CONFIG_PMEM_MALLOC)
   pmem = malloc(CONFIG_MSIZE);
@@ -70,24 +54,38 @@ word_t paddr_read(paddr_t addr, int len) {
   word_t data = 0;
   if (likely(in_pmem(addr))) {
     data = pmem_read(addr, len);
-    IFDEF(CONFIG_MTRACE, mtrace_read(addr, len, data));
+    IFDEF(CONFIG_MTRACE, if (MTRACE_COND) {
+      Log("mtrace: read  addr = " FMT_PADDR ", len = %d, data = " FMT_WORD,
+          addr, len, data);
+    });
     return data;
   }
-#ifdef CONFIG_DEVICE
-  data = mmio_read(addr, len);
-  IFDEF(CONFIG_MTRACE, mtrace_read(addr, len, data));
-  return data;
-#endif
+  IFDEF(CONFIG_DEVICE,
+    data = mmio_read(addr, len);
+    IFDEF(CONFIG_MTRACE, if (MTRACE_COND) {
+      Log("mtrace: read  addr = " FMT_PADDR ", len = %d, data = " FMT_WORD,
+          addr, len, data);
+    });
+    return data);
   out_of_bound(addr);
   return 0;
 }
 
 void paddr_write(paddr_t addr, int len, word_t data) {
-  IFDEF(CONFIG_MTRACE, mtrace_write(addr, len, data));
-  if (likely(in_pmem(addr))) { pmem_write(addr, len, data); return; }
-#ifdef CONFIG_DEVICE
-  mmio_write(addr, len, data);
-  return;
-#endif
+  if (likely(in_pmem(addr))) {
+    IFDEF(CONFIG_MTRACE, if (MTRACE_COND) {
+      Log("mtrace: write addr = " FMT_PADDR ", len = %d, data = " FMT_WORD,
+          addr, len, data);
+    });
+    pmem_write(addr, len, data);
+    return;
+  }
+  IFDEF(CONFIG_DEVICE,
+    IFDEF(CONFIG_MTRACE, if (MTRACE_COND) {
+      Log("mtrace: write addr = " FMT_PADDR ", len = %d, data = " FMT_WORD,
+          addr, len, data);
+    });
+    mmio_write(addr, len, data);
+    return);
   out_of_bound(addr);
 }
