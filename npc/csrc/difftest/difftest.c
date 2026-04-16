@@ -63,6 +63,7 @@ void init_difftest(const char* ref_so_file, long img_size) {
   //     "This will help you a lot for debugging, but also significantly reduce the performance. "
   //     "If it is not necessary, you can turn it off in menuconfig.", ref_so_file);
 
+  ref_difftest_init(0);
   ref_difftest_memcpy(RESET_VECTOR, guest_to_host(RESET_VECTOR), img_size, DIFFTEST_TO_REF);
   DifftestRegs dut_regs = {};
   reg_copy(&dut_regs);
