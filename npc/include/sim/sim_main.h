@@ -31,6 +31,7 @@ long load_img(void);
 void step_one_cycle(void);
 void sim_init(void);
 void sim_exit(void);
+int sim_status(void);
 uint32_t read_gpr(uint32_t index);
 
 #define FMT_WORD "0x%08" PRIx32

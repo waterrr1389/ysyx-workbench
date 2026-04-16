@@ -9,6 +9,8 @@
 #define ARRLEN(arr) (int)(sizeof(arr) / sizeof(arr[0]))
 #define NR_CMD ARRLEN(cmd_table)
 
+static int is_batch_mode = false;
+
 static int cmd_c(char* args);
 static int cmd_q(char* args);
 static int cmd_help(char* args);
@@ -104,13 +106,15 @@ static int cmd_info(char* args) {
 	return 0;
 }
 
+void sdb_set_batch_mode(void) {
+  is_batch_mode = true;
+}
+
 void sdb_mainloop(void) {
-	// see parse_args in monitor/monitor.c
-	// In normal case, the value of is_batch_mode is false
-	// if (is_batch_mode) {
-	// 	cmd_c(NULL);
-	// 	return;
-	// }
+	if (is_batch_mode) {
+		cmd_c(NULL);
+		return;
+	}
 
   while(sim) {
   	for (char *str; (str = rl_gets()) != NULL;) {
