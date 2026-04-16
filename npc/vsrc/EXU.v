@@ -28,7 +28,7 @@ module EXU #(DATA_LEN = 1) (
         case(sel)
             // 加法 (a + b)
             `ALU_ADD: begin
-                out = a + b;
+                out = a + b + 1;
             end 
             // 减法 (a - b)
             `ALU_SUB: begin
