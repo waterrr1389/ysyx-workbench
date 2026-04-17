@@ -78,10 +78,8 @@ enum {
     word_t rs1;                                                                \
     get_rs1(s->isa.inst);                                                      \
     if (rd == 1) { /* call */                                                  \
-      // jalr ra, 0(rs1)
       call_record(pc, dst);                                                    \
     } else if (rd == 0 && rs1 == 1) { /* ret */                                \
-      // jalr x0, 0(ra) -> ret
       ret_record(pc);                                                          \
     } else { /* Log("ftrace: invalid..."); */                                  \
     }                                                                          \
@@ -90,7 +88,6 @@ enum {
   do {                                                                         \
     if (rd == 1) {                                                             \
       /* call */                                                               \
-      // jal ra, imm
       call_record(pc, dst);                                                    \
     } else {                                                                   \
       /* Log("ftrace: invalid..."); */                                         \

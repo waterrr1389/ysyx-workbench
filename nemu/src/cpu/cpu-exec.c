@@ -158,7 +158,8 @@ void cpu_exec(uint64_t n) {
         nemu_state.halt_pc);
   case NEMU_QUIT:
     statistic();
-    // iRingBufferDump();
-    // ftrace(cpu.pc);
+    #ifdef CONFIG_ITRACE
+    iRingBufferDump();
+    #endif
   }
 }
