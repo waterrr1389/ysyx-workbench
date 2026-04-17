@@ -76,7 +76,7 @@ OBJCOPY   = $(CROSS_COMPILE)objcopy
 READELF   = $(CROSS_COMPILE)readelf
 
 ### Compilation flags
-# 3个目录 -I$(AM_HOME)/klib/include -I$(AM_HOME)/am/include -I$(AM_HOME)/include
+# 2个目录 -I$(AM_HOME)/klib/include -I$(AM_HOME)/am/include
 INC_PATH += $(WORK_DIR)/include $(addsuffix /include/, $(addprefix $(AM_HOME)/, $(LIBS))) 
 INCFLAGS += $(addprefix -I, $(INC_PATH))
 
