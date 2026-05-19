@@ -13,6 +13,7 @@ IMG := ./dummy.bin
 ARGS ?=
 ITRACE ?= 0
 FTRACE ?= 0
+MTRACE ?= 0
 
 ifeq ($(ITRACE),1)
 CFLAGS += -CFLAGS -DNPC_ITRACE=1
@@ -20,6 +21,10 @@ endif
 
 ifeq ($(FTRACE),1)
 CFLAGS += -CFLAGS -DNPC_FTRACE=1
+endif
+
+ifeq ($(MTRACE),1)
+CFLAGS += -CFLAGS -DNPC_MTRACE=1
 endif
 
 sim: $(BUILD_DIR)
