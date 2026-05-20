@@ -71,9 +71,16 @@ static inline void update_screen() {
 #endif
 #endif
 
+#include <memory/paddr.h> // paddr_[read/write]
+
 void vga_update_screen() {
   // TODO: call `update_screen()` when the sync register is non-zero,
   // then zero out the sync register
+  uint32_t sync = paddr_read(CONFIG_VGA_CTL_MMIO+4, 4);
+  if (sync) {
+    update_screen();
+    paddr_write(CONFIG_VGA_CTL_MMIO+4, 4, 0);
+  }
 }
 
 void init_vga() {
