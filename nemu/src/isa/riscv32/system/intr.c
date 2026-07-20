@@ -23,7 +23,8 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
     case 8: // env call
       cpu.mcause = 8;
       cpu.mepc = epc;
-      Log("raise intr: NO=%d, epc=0x%x, mtvec=0x%x", NO, epc, cpu.mtvec);
+      IFDEF(CONFIG_ETRACE, Log("etrace: NO=%d epc=" FMT_WORD " mtvec=" FMT_WORD,
+                                NO, epc, cpu.mtvec));
       break;  
     default:
     ;
