@@ -66,6 +66,7 @@ int vsprintf(char *out, const char *fmt, va_list args) {
 
     while (*p != '\0') {
         if (*p != '%') {
+            out = write_char(out, *p);
             p++;
             continue;
         }
@@ -76,6 +77,9 @@ int vsprintf(char *out, const char *fmt, va_list args) {
         switch (*p) {
             case 'd':
                 out = write_int(out, va_arg(args, int));
+                break;
+            case 'c':
+                out = write_char(out, (char)va_arg(args, int));
                 break;
             case 's': {
                 char *str = va_arg(args, char *);
