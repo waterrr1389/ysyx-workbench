@@ -112,14 +112,6 @@ config EXPR
   bool "expr-test"
   default n
 
-config FTRACE
-  bool "ftrace"
-  default n
-
-config MTRACE
-  bool "mtrace"
-  default n
-
 config WATCHPOINT
   bool "watchpoint"
   default n
@@ -175,7 +167,15 @@ config ITRACE_COND
   default "true"
 
 config ETRACE
-  bool "Enable exception tracer"
+  bool "Enable etrace"
+  default n
+
+config FTRACE
+  bool "Enable ftrace"
+  default n
+
+config MTRACE
+  bool "Enable mtrace"
   default n
 
 
