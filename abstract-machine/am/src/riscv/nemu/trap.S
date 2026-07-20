@@ -58,6 +58,7 @@ __am_asm_trap:
   csrw mstatus, t1
 
   mv a0, sp
+  # call exceptional handler
   call __am_irq_handle
 
   LOAD t1, OFFSET_STATUS(sp)

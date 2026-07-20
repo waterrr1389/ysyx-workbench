@@ -15,6 +15,7 @@
 
 #include "../../monitor/sdb/ftrace.h"
 #include "capstone/arm.h"
+#include "isa.h"
 #include "local-include/reg.h"
 #include <cpu/cpu.h>
 #include <cpu/decode.h>
@@ -32,6 +33,8 @@ enum {
   TYPE_J,
   TYPE_R,
   TYPE_B,
+  TYPE_CSR_R,
+  TYPE_CSR_I,
   TYPE_N,
   TYPE_F // none
 };
@@ -129,12 +132,42 @@ static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2,
     src2R();
     immB();
     break;
+  case TYPE_CSR_R:
+    src1R();
+    *rd = BITS(i, 11, 7);
+    *imm = BITS(i, 31, 20);
+    break;
+  case TYPE_CSR_I:
+    *src1 = BITS(i, 19, 15);
+    *rd = BITS(i, 11, 7);
+    *imm = BITS(i, 31, 20);
+    break;
   case TYPE_N:
     break;
   case TYPE_F:
     break;
   default:
     panic("unsupported type = %d", type);
+  }
+}
+
+static word_t csr_read(word_t addr) {
+  switch (addr) {
+    case 0x300: return cpu.mstatus;
+    case 0x305: return cpu.mtvec;
+    case 0x341: return cpu.mepc;
+    case 0x342: return cpu.mcause;
+    default: panic("csr_read: unsupported csr 0x%x", addr); return 0;
+  }
+}
+
+static void csr_write(word_t addr, word_t val) {
+  switch (addr) {
+    case 0x300: cpu.mstatus = val; return;
+    case 0x305: cpu.mtvec = val; return;
+    case 0x341: cpu.mepc = val; return;
+    case 0x342: cpu.mcause = val; return;
+    default: panic("csr_write: unsupported csr 0x%x", addr);
   }
 }
 
@@ -268,6 +301,16 @@ static int decode_exec(Decode *s) {
   INSTPAT("??????? ????? ????? 000 ????? 00011 11", fence, F, ;);
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak, N,
           NEMUTRAP(s->pc, R(10))); // R(10) is $a0
+
+  // 8 - Environment call from U-mode
+  INSTPAT("000000000000 00000 000 00000 1110011", ecall, N, s->dnpc = isa_raise_intr(8, s->snpc);); 
+  INSTPAT("??????? ????? ????? 001 ????? 11100 11", csrrw, CSR_R, word_t old = csr_read(imm); csr_write(imm, src1); if (rd != 0) R(rd) = old;);
+  INSTPAT("??????? ????? ????? 010 ????? 11100 11", csrrs, CSR_R, word_t old = csr_read(imm); csr_write(imm, old | src1); if (rd != 0) R(rd) = old;);
+  INSTPAT("??????? ????? ????? 011 ????? 11100 11", csrrc, CSR_R, word_t old = csr_read(imm); csr_write(imm, old & ~src1); if (rd != 0) R(rd) = old;);
+  INSTPAT("??????? ????? ????? 101 ????? 11100 11", csrrwi, CSR_I, word_t old = csr_read(imm); csr_write(imm, src1); if (rd != 0) R(rd) = old;);
+  INSTPAT("??????? ????? ????? 110 ????? 11100 11", csrrsi, CSR_I, word_t old = csr_read(imm); csr_write(imm, old | src1); if (rd != 0) R(rd) = old;);
+  INSTPAT("??????? ????? ????? 111 ????? 11100 11", csrrci, CSR_I, word_t old = csr_read(imm); csr_write(imm, old & ~src1); if (rd != 0) R(rd) = old;);
+  INSTPAT("001100000010 00000 000 00000 11100 11", mret, N, s->dnpc = cpu.mepc;);
   INSTPAT("??????? ????? ????? ??? ????? ????? ??", inv, N, INV(s->pc));
 
   INSTPAT_END();
