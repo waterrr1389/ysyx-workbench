@@ -4,17 +4,25 @@
 
 static Context* (*user_handler)(Event, Context*) = NULL;
 
+static Event decode_event(uintptr_t mcause, uintptr_t a7) {
+  Event ev = {0};
+  switch (mcause) {
+    case 8:
+      if (a7 == (uintptr_t)-1)
+        ev.event = EVENT_YIELD;
+      else
+        ev.event = EVENT_SYSCALL;
+      break;
+    default: ;
+  }
+
+  return ev;
+}
+
 Context* __am_irq_handle(Context *c) {
   if (user_handler) {
-    Event ev = {0};
-    switch (c->mcause) {
-      case 8: 
-        ev.event = EVENT_SYSCALL;
-        break;
-      default: ev.event = EVENT_ERROR; break;
-    }
-
-    c = user_handler(ev, c); // handler执行完毕后，按需返回context
+    Event ev = decode_event(c->mcause, c->GPR1);
+    c = user_handler(ev, c);
     assert(c != NULL);
   }
 
