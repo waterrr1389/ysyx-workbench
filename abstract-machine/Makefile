@@ -103,6 +103,7 @@ LDFLAGS  += -z noexecstack $(addprefix -T, $(LDSCRIPTS))
 $(DST_DIR)/%.o: %.c
 	@mkdir -p $(dir $@) && echo + CC $<
 	@$(CC) -std=gnu11 $(CFLAGS) -c -o $@ $(realpath $<)
+	@$(CC) -std=gnu11 $(CFLAGS) -E -o $@.i $(realpath $<)
 
 ### Rule (compile): a single `.cc` -> `.o` (g++)
 $(DST_DIR)/%.o: %.cc
