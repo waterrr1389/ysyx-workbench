@@ -112,14 +112,6 @@ config EXPR
   bool "expr-test"
   default n
 
-config FTRACE
-  bool "ftrace"
-  default n
-
-config MTRACE
-  bool "mtrace"
-  default n
-
 config WATCHPOINT
   bool "watchpoint"
   default n
@@ -165,7 +157,7 @@ config TRACE_END
   default 10000
 
 config ITRACE
-  depends on TRACE && TARGET_NATIVE_ELF && ENGINE_INTERPRETER
+  depends on TARGET_NATIVE_ELF
   bool "Enable instruction tracer"
   default y
 
@@ -173,6 +165,18 @@ config ITRACE_COND
   depends on ITRACE
   string "Only trace instructions when the condition is true"
   default "true"
+
+config ETRACE
+  bool "Enable etrace"
+  default n
+
+config FTRACE
+  bool "Enable ftrace"
+  default n
+
+config MTRACE
+  bool "Enable mtrace"
+  default n
 
 
 config DIFFTEST
