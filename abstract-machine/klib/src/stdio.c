@@ -109,6 +109,10 @@ int vsprintf(char *out, const char *fmt, va_list args) {
         p++;
     }
 
+    if (state == FORMAT_SPECIFIER) {
+        out = write_char(out, '%');
+    }
+
     if (out) *out = '\0';
     return (int)(out - start);
 }
