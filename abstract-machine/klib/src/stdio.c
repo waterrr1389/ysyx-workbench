@@ -61,40 +61,49 @@ int printf(const char *fmt, ...) {
 }
 
 int vsprintf(char *out, const char *fmt, va_list args) {
+    enum FormatState {
+        FORMAT_TEXT,
+        FORMAT_SPECIFIER,
+    } state = FORMAT_TEXT;
+
     char *start = out;
     const char *p = fmt;
 
     while (*p != '\0') {
-        if (*p != '%') {
-            out = write_char(out, *p);
-            p++;
-            continue;
-        }
-
-        p++; 
-        if (*p == '\0') break;
-
-        switch (*p) {
-            case 'd':
-                out = write_int(out, va_arg(args, int));
-                break;
-            case 'c':
-                out = write_char(out, (char)va_arg(args, int));
-                break;
-            case 's': {
-                char *str = va_arg(args, char *);
-                if (!str) str = "(null)";
-                for (int i = 0; str[i] != '\0'; i++) {
-                    out = write_char(out, str[i]);
+        switch (state) {
+            case FORMAT_TEXT:
+                if (*p == '%') {
+                    state = FORMAT_SPECIFIER;
+                } else {
+                    out = write_char(out, *p);
                 }
                 break;
-            }
-            case '%':
-                out = write_char(out, '%');
-                break;
-            default:
-                out = write_char(out, '%');
-                out = write_char(out, *p);
+
+            case FORMAT_SPECIFIER:
+                switch (*p) {
+                    case 'd':
+                        out = write_int(out, va_arg(args, int));
+                        break;
+                    case 'c':
+                        out = write_char(out, (char)va_arg(args, int));
+                        break;
+                    case 's': {
+                        char *str = va_arg(args, char *);
+                        if (!str) str = "(null)";
+                        for (int i = 0; str[i] != '\0'; i++) {
+                            out = write_char(out, str[i]);
+                        }
+                        break;
+                    }
+                    case '%':
+                        out = write_char(out, '%');
+                        break;
+                    default:
+                        out = write_char(out, '%');
+                        out = write_char(out, *p);
+                        break;
+                }
+                state = FORMAT_TEXT;
                 break;
         }
         p++;
