@@ -256,6 +256,9 @@ Record results in this form:
 | Baseline | MicroBench | train | 62,779,520 | 2,576,190 us | 24,369,134 | - |
 | C++ migration | MicroBench | train | 62,779,454 | 2,609,029 us | 24,062,382 | -1.26% |
 | C++ migration (rerun) | MicroBench | train | 62,779,553 | 2,605,412 us | 24,095,825 | -1.12% |
+| Hierarchical decode | MicroBench | train | 62,779,553 | 2,602,760 us | 24,120,377 | -1.02% |
+| Hierarchical decode (rerun) | MicroBench | train | 62,779,586 | 2,606,067 us | 24,089,782 | -1.15% |
+| Baseline (current-env rerun) | MicroBench | train | 62,779,553 | 2,666,042 us | 23,547,848 | - |
 | Candidate | MicroBench | train | TBD | TBD | TBD | TBD |
 | Final | MicroBench | ref | TBD | TBD | TBD | TBD |
 
@@ -271,6 +274,19 @@ contains about 1000 host instructions with 82 compares and 72 conditional
 branches forming the sequential selection chain. Common instructions are not
 ordered to the front, so the average number of checks per guest instruction
 remains dependent on source order.
+
+Hierarchical decode measurement (steps 4-6): after the switch-based decoder,
+the disassembled `cpu_exec()` shrinks to about 690 host instructions with 41
+compares and 8 indirect jumps (compiler-generated jump tables). All 35 CPU
+tests pass. Host timing noise over minutes is significant on this machine:
+the apparent ~1% regression of the C++ migration disappeared when the pristine
+baseline was rebuilt in a worktree and rerun back-to-back (23,547,848 inst/s
+baseline vs 24,089,782 inst/s hierarchical, i.e. about +2.3% for the
+hierarchical decoder in the same environment window). Comparisons must be
+made back-to-back; absolute numbers from different time windows are not
+comparable. Decode is no longer a material bottleneck after hierarchical
+decoding, so per step 6 the decode cache and dispatch alternatives are left
+unevaluated.
 
 ## Validation
 
