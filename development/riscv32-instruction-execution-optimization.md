@@ -254,6 +254,8 @@ Record results in this form:
 | Revision | Workload | Data size | Guest instructions | Host time | Instructions/s | Change |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
 | Baseline | MicroBench | train | 62,779,520 | 2,576,190 us | 24,369,134 | - |
+| C++ migration | MicroBench | train | 62,779,454 | 2,609,029 us | 24,062,382 | -1.26% |
+| C++ migration (rerun) | MicroBench | train | 62,779,553 | 2,605,412 us | 24,095,825 | -1.12% |
 | Candidate | MicroBench | train | TBD | TBD | TBD | TBD |
 | Final | MicroBench | ref | TBD | TBD | TBD | TBD |
 
