@@ -268,6 +268,14 @@ Record results in this form:
 Final head-to-head (pristine worktree vs rewritten tree, alternating runs,
 min host time): **6.97x** host-time reduction, 647 -> 4354 Marks.
 
+Contribution isolation (ref, alternating x3, min host time): the original
+INSTPAT decoder with only the timer throttle applied reaches 5.29 s / 351 M
+inst/s (~4000 Marks), versus 4.63 s / 401 M inst/s (~4500 Marks) for the
+hierarchical decoder with the same throttle. The timer throttle alone
+accounts for about 6.5x; hierarchical decoding adds a further 12-14% that was
+previously masked by the gettimeofday overhead (decode cost was diluted to
+the noise floor while the timer dominated).
+
 ## Host-timer bottleneck (found by perf, fixed out of original scope)
 
 `perf record` on a `ref` run showed 74.85% of all host cycles in
