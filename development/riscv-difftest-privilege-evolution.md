@@ -1,6 +1,6 @@
 # RISC-V DiffTest and Privilege-State Evolution
 
-Status: In Progress
+Status: Completed
 
 ## Context
 
@@ -580,7 +580,7 @@ the missing ABI query symbol. A separately built wrong-version or wrong-size
 provider is unnecessary for this milestone because the missing-symbol path
 proves rejection of the actual stale ABI.
 
-Finally, exercise the non-terminating scheduling path:
+With Spike DiffTest enabled, exercise the trap and first context-switch path:
 
 ```sh
 make -C am-kernels/kernels/yield-os ARCH=riscv32-nemu
@@ -588,9 +588,24 @@ timeout 3s make -C am-kernels/kernels/yield-os \
   ARCH=riscv32-nemu run
 ```
 
-The timeout exit is expected. Success means repeated `?` output with no panic
-or DiffTest mismatch. The output remains `?` because passing `arg` to a new
-kernel context is outside the current task.
+This configuration has `CONFIG_DEVICE` disabled, so the expected boundary is
+the new thread's first serial MMIO access. Before that access, execution must
+complete the M-mode environment call, trap entry, context selection, context
+restore, `mret`, and transfer to the new thread without a DiffTest mismatch.
+
+Continuous scheduling output is verified separately with a temporary native
+NEMU configuration that disables DiffTest and enables the device model. Preserve
+and restore the active `.config`, synchronize Kconfig after each change, and
+run:
+
+```sh
+timeout 3s make -C am-kernels/kernels/yield-os \
+  ARCH=riscv32-nemu run
+```
+
+The timeout exit is expected. Success means repeated `?` output with no panic.
+The output remains `?` because passing `arg` to a new kernel context is outside
+the current task.
 
 Before reporting completion:
 
@@ -600,6 +615,34 @@ git status --short
 ```
 
 Exact result summaries must be added before the document becomes `Completed`.
+
+## Validation results
+
+Validation completed on 2026-07-25:
+
+- `make -C nemu -j$(nproc)` completed successfully with the restored Spike
+  DiffTest configuration.
+- `make -C nemu/tools/spike-diff GUEST_ISA=riscv32` completed successfully.
+  Spike emitted its existing `log_file.h` ignored-attributes warning.
+- `make -C nemu/tools/spike-diff GUEST_ISA=riscv64` also compiled, confirming
+  that the retained RV64 branch was not broken.
+- `nm -D` showed exported `difftest_get_abi_version`,
+  `difftest_get_state_size`, and `difftest_regcpy` symbols.
+- NEMU rejected the preserved V0 Spike provider before executing any guest
+  instruction, reporting the missing `difftest_get_abi_version` symbol.
+- The focused `dummy` CPU test passed with Spike DiffTest.
+- The serial full-suite command passed all 35 CPU tests with Spike DiffTest.
+- Spike DiffTest followed `yield-os` through cause 11 at the environment call,
+  trap handling, `mret`, and entry into the selected kernel thread without a
+  state mismatch. Execution then stopped at serial address `0xa00003f8`, as
+  expected with `CONFIG_DEVICE` disabled.
+- With a temporary native configuration using `CONFIG_DEVICE=y` and DiffTest
+  disabled, the three-second `yield-os` run timed out as expected after
+  approximately 39.5 million guest instructions and produced 79 `?`
+  characters.
+- The original Spike DiffTest `.config` and generated Kconfig headers were
+  restored and NEMU was rebuilt afterward.
+- `git diff --check` reported no whitespace errors.
 
 ## Deferred questions
 
