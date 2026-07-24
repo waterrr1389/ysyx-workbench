@@ -9,6 +9,8 @@ static Event decode_event(uintptr_t mcause, uintptr_t a7) {
   Event ev = {0};
   switch (mcause) {
     case 8:
+    case 9:
+    case 11:
       if (a7 == (uintptr_t)-1)
         ev.event = EVENT_YIELD;
       else
@@ -21,8 +23,12 @@ static Event decode_event(uintptr_t mcause, uintptr_t a7) {
 }
 
 Context* __am_irq_handle(Context *c) {
+  Event ev = decode_event(c->mcause, c->GPR1);
+  if (ev.event == EVENT_YIELD || ev.event == EVENT_SYSCALL) {
+    c->mepc += 4;
+  }
+
   if (user_handler) {
-    Event ev = decode_event(c->mcause, c->GPR1);
     c = user_handler(ev, c);
     assert(c != NULL);
   }
