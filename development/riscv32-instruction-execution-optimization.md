@@ -253,9 +253,22 @@ Record results in this form:
 
 | Revision | Workload | Data size | Guest instructions | Host time | Instructions/s | Change |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
-| Baseline | MicroBench | train | TBD | TBD | TBD | - |
+| Baseline | MicroBench | train | 62,779,520 | 2,576,190 us | 24,369,134 | - |
 | Candidate | MicroBench | train | TBD | TBD | TBD | TBD |
 | Final | MicroBench | ref | TBD | TBD | TBD | TBD |
+
+Baseline environment: x86-64 physical host, clang 22.1.8 with `-O2` and LTO,
+commit `e45fbd1`, release-style RV32 interpreter config (DiffTest, trace,
+watchpoint, and compiler debug disabled), host timer `gettimeofday()`. MicroBench `train`
+scored time 2205.524 ms, total time 2575.462 ms, all benchmarks passed.
+
+Decoder measurement (step 2): the build uses LTO, so `isa_exec_once()` and
+the whole `INSTPAT` chain are inlined into `cpu_exec()`. The compiler fully
+folds `pattern_decode()` for constant patterns; the disassembled `cpu_exec()`
+contains about 1000 host instructions with 82 compares and 72 conditional
+branches forming the sequential selection chain. Common instructions are not
+ordered to the front, so the average number of checks per guest instruction
+remains dependent on source order.
 
 ## Validation
 

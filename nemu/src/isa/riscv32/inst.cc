@@ -13,13 +13,15 @@
  * See the Mulan PSL v2 for more details.
  ***************************************************************************************/
 
+extern "C" {
 #include "../../monitor/sdb/ftrace.h"
-#include "capstone/arm.h"
 #include "isa.h"
 #include "local-include/reg.h"
 #include <cpu/cpu.h>
 #include <cpu/decode.h>
 #include <cpu/ifetch.h>
+}
+#include "capstone/arm.h"
 #include <stdint.h>
 
 #define R(i) gpr(i)
