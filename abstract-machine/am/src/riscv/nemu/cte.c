@@ -1,6 +1,7 @@
 #include <am.h>
 #include <riscv/riscv.h>
 #include <klib.h>
+#include "context-offset.h"
 
 static Context* (*user_handler)(Event, Context*) = NULL;
 
@@ -42,7 +43,14 @@ bool cte_init(Context*(*handler)(Event, Context*)) {
 }
 
 Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
-  return NULL;
+  // Place the initial context immediately below the stack's high address.
+  uintptr_t context_addr = (uintptr_t)kstack.end - sizeof(Context);
+  Context *c = (Context *)context_addr;
+  memset(c, 0, sizeof(Context));
+  c->mstatus = 0x1800u;
+  c->mepc = (uintptr_t)entry;
+  (void)arg;
+  return c;
 }
 
 void yield() {
