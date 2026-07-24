@@ -42,7 +42,14 @@ bool cte_init(Context*(*handler)(Event, Context*)) {
 }
 
 Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
-  return NULL;
+  // Place the initial context immediately below the stack's high address.
+  Context *c = (Context *)kstack.end - 1;
+  *c = (Context) {
+    .mstatus = 0x1800u,
+    .mepc = (uintptr_t)entry,
+  };
+  (void)arg;
+  return c;
 }
 
 void yield() {

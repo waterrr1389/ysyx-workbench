@@ -57,9 +57,12 @@ __am_asm_trap:
   or t1, t1, a0
   csrw mstatus, t1
 
+  # Context* as argument
   mv a0, sp
   # call exceptional handler
   call __am_irq_handle
+  # TODO: context switch happens here
+  mv sp, a0
 
   LOAD t1, OFFSET_STATUS(sp)
   LOAD t2, OFFSET_EPC(sp)

@@ -19,7 +19,7 @@ static char* write_int(char *out, int num) {
 
     if (num < 0) {
         out = write_char(out, '-');
-        u_num = (unsigned int)(-(num + 1)) + 1;
+        u_num = (unsigned int)(-(num + 1)) + 1; // Avoid signed overflow for INT_MIN
     } else {
         u_num = (unsigned int)num;
     }
@@ -113,7 +113,7 @@ int vsprintf(char *out, const char *fmt, va_list args) {
         out = write_char(out, '%');
     }
 
-    if (out) *out = '\0';
+    *out = '\0'; // append '\0' as the end of string
     return (int)(out - start);
 }
 
