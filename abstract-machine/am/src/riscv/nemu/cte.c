@@ -1,6 +1,7 @@
 #include <am.h>
 #include <riscv/riscv.h>
 #include <klib.h>
+#include "context-offset.h"
 
 static Context* (*user_handler)(Event, Context*) = NULL;
 

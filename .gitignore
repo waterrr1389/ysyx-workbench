@@ -8,6 +8,8 @@
 !/npc/*
 !Makefile
 !README.md
+!AGENTS.md
+!/development/*.md
 !.gitignore
 !init.sh
 /fceux-am

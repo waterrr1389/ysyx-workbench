@@ -35,6 +35,9 @@ static void restart() {
 
 	/* Set mstatus csr */
 	cpu.mstatus = 0x1800u;
+
+	/* Reset enters machine mode. */
+	cpu.priv = RISCV_PRIV_M;
 }
 
 void init_isa() {

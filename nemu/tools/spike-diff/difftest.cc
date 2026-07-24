@@ -38,11 +38,15 @@ static debug_module_config_t difftest_dm_config = {
   .support_impebreak = true
 };
 
+#if defined(CONFIG_RV64)
 struct diff_context_t {
   word_t gpr[MUXDEF(CONFIG_RVE, 16, 32)];
   word_t mcause, mstatus, mepc, mtvec;
   word_t pc;
 };
+#else
+using diff_context_t = riscv32_difftest_state_t;
+#endif
 
 static sim_t* s = NULL;
 static processor_t *p = NULL;
@@ -63,6 +67,13 @@ void sim_t::diff_get_regs(void* diff_context) {
   for (int i = 0; i < NR_GPR; i++) {
     ctx.gpr[i] = static_cast<word_t>(state->XPR[i]);
   }
+#if !defined(CONFIG_RV64)
+  for (size_t i = NR_GPR; i < RISCV32_DIFFTEST_GPR_COUNT; i++) {
+    ctx.gpr[i] = 0;
+  }
+  ctx.gpr[0] = 0;
+  ctx.priv = static_cast<uint32_t>(state->prv);
+#endif
   ctx.mcause = static_cast<word_t>(state->mcause->read());
   ctx.mstatus = static_cast<word_t>(state->mstatus->read());
   ctx.mepc = static_cast<word_t>(state->mepc->read());
@@ -76,11 +87,17 @@ void sim_t::diff_set_regs(void* diff_context) {
   for (int i = 0; i < NR_GPR; i++) {
     state->XPR.write(i, static_cast<sword_t>(ctx.gpr[i]));
   }
+#if !defined(CONFIG_RV64)
+  assert(ctx.priv == PRV_U || ctx.priv == PRV_S || ctx.priv == PRV_M);
+#endif
   state->mcause->write(static_cast<reg_t>(ctx.mcause));
   state->mstatus->write(static_cast<reg_t>(ctx.mstatus));
   state->mepc->write(static_cast<reg_t>(ctx.mepc));
   state->mtvec->write(static_cast<reg_t>(ctx.mtvec));
   state->pc = static_cast<reg_t>(ctx.pc);
+#if !defined(CONFIG_RV64)
+  p->set_privilege(static_cast<reg_t>(ctx.priv));
+#endif
 }
 
 void sim_t::diff_memcpy(reg_t dest, void* src, size_t n) {
@@ -92,6 +109,16 @@ void sim_t::diff_memcpy(reg_t dest, void* src, size_t n) {
 
 extern "C" {
 
+#if !defined(CONFIG_RV64)
+__EXPORT uint32_t difftest_get_abi_version(void) {
+  return RISCV32_DIFFTEST_ABI_VERSION;
+}
+
+__EXPORT uint32_t difftest_get_state_size(void) {
+  return sizeof(riscv32_difftest_state_t);
+}
+#endif
+
 __EXPORT void difftest_memcpy(paddr_t addr, void *buf, size_t n, bool direction) {
   if (direction == DIFFTEST_TO_REF) {
     s->diff_memcpy(addr, buf, n);
@@ -100,6 +127,19 @@ __EXPORT void difftest_memcpy(paddr_t addr, void *buf, size_t n, bool direction)
   }
 }
 
+#if !defined(CONFIG_RV64)
+__EXPORT void difftest_regcpy(
+    riscv32_difftest_state_t* dut, uint32_t direction) {
+  assert(dut != nullptr);
+  if (direction == DIFFTEST_TO_REF) {
+    s->diff_set_regs(dut);
+  } else if (direction == DIFFTEST_TO_DUT) {
+    s->diff_get_regs(dut);
+  } else {
+    assert(false);
+  }
+}
+#else
 __EXPORT void difftest_regcpy(void* dut, bool direction) {
   if (direction == DIFFTEST_TO_REF) {
     s->diff_set_regs(dut);
@@ -107,6 +147,7 @@ __EXPORT void difftest_regcpy(void* dut, bool direction) {
     s->diff_get_regs(dut);
   }
 }
+#endif
 
 __EXPORT void difftest_exec(uint64_t n) {
   s->diff_step(n);
