@@ -303,7 +303,7 @@ static int decode_exec(Decode *s) {
           NEMUTRAP(s->pc, R(10))); // R(10) is $a0
 
   // 8 - Environment call from U-mode
-  INSTPAT("000000000000 00000 000 00000 1110011", ecall, N, s->dnpc = isa_raise_intr(8, s->snpc);); 
+  INSTPAT("000000000000 00000 000 00000 1110011", ecall, N, s->dnpc = isa_raise_intr(11, s->snpc);); 
   INSTPAT("??????? ????? ????? 001 ????? 11100 11", csrrw, CSR_R, word_t old = csr_read(imm); csr_write(imm, src1); if (rd != 0) R(rd) = old;);
   INSTPAT("??????? ????? ????? 010 ????? 11100 11", csrrs, CSR_R, word_t old = csr_read(imm); csr_write(imm, old | src1); if (rd != 0) R(rd) = old;);
   INSTPAT("??????? ????? ????? 011 ????? 11100 11", csrrc, CSR_R, word_t old = csr_read(imm); csr_write(imm, old & ~src1); if (rd != 0) R(rd) = old;);
