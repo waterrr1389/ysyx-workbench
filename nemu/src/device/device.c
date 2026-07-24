@@ -23,6 +23,9 @@
 void init_map();
 void init_serial();
 void init_timer();
+
+// Number of device_update() calls between host clock polls.
+#define DEVICE_UPDATE_INTERVAL 1024
 void init_vga();
 void init_i8042();
 void init_audio();
@@ -35,6 +38,13 @@ void vga_update_screen();
 
 void device_update() {
   static uint64_t last = 0;
+  // Reading the host clock costs far more than executing one guest
+  // instruction, so only poll it every DEVICE_UPDATE_INTERVAL calls.
+  static uint32_t skip = 0;
+  if (++skip < DEVICE_UPDATE_INTERVAL) {
+    return;
+  }
+  skip = 0;
   uint64_t now = get_time();
   if (now - last < 1000000 / TIMER_HZ) {
     return;
