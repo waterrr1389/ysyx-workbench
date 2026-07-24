@@ -22,12 +22,17 @@ bool isa_difftest_checkregs(CPU_state *ref_cpu, vaddr_t pc) {
   const word_t *dut_gpr = cpu.gpr;
 
   for (int reg_idx = 0; reg_idx < ARRLEN(cpu.gpr); reg_idx++) {
-    if (dut_gpr[reg_idx] != ref_gpr[reg_idx]) {
+    if (!difftest_check_reg(reg_name(reg_idx), pc, ref_gpr[reg_idx],
+                            dut_gpr[reg_idx])) {
       return false;
     }
   }
 
-  return true;
+  return difftest_check_reg("pc", pc, ref_cpu->pc, cpu.pc) &&
+         difftest_check_reg("priv", pc, ref_cpu->priv, cpu.priv) &&
+         difftest_check_reg("mtvec", pc, ref_cpu->mtvec, cpu.mtvec) &&
+         difftest_check_reg("mepc", pc, ref_cpu->mepc, cpu.mepc) &&
+         difftest_check_reg("mcause", pc, ref_cpu->mcause, cpu.mcause);
 }
 
 void isa_difftest_attach() {

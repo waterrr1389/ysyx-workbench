@@ -18,6 +18,14 @@
 #include <difftest-def.h>
 #include <memory/paddr.h>
 
+__EXPORT uint32_t difftest_get_abi_version(void) {
+  return RISCV32_DIFFTEST_ABI_VERSION;
+}
+
+__EXPORT uint32_t difftest_get_state_size(void) {
+  return sizeof(riscv32_difftest_state_t);
+}
+
 __EXPORT void difftest_memcpy(paddr_t addr, void *buf, size_t n, bool direction) {
   if (direction == DIFFTEST_TO_REF) {
     memcpy(guest_to_host(addr), buf, n);
@@ -26,20 +34,16 @@ __EXPORT void difftest_memcpy(paddr_t addr, void *buf, size_t n, bool direction)
   }
 }
 
-__EXPORT void difftest_regcpy(void *dut, bool direction) {
-  CPU_state *dut_cpu = (CPU_state *)dut;
-  CPU_state *ref_cpu = &cpu;
+__EXPORT void difftest_regcpy(riscv32_difftest_state_t *dut,
+                              uint32_t direction) {
+  assert(dut != NULL);
 
   if (direction == DIFFTEST_TO_REF) {
-    for (int reg_idx = 0; reg_idx < ARRLEN(cpu.gpr); reg_idx++) {
-      ref_cpu->gpr[reg_idx] = dut_cpu->gpr[reg_idx];
-    }
-    ref_cpu->pc = dut_cpu->pc;
+    isa_difftest_import_state(&cpu, dut);
+  } else if (direction == DIFFTEST_TO_DUT) {
+    isa_difftest_export_state(dut, &cpu);
   } else {
-    for (int reg_idx = 0; reg_idx < ARRLEN(cpu.gpr); reg_idx++) {
-      dut_cpu->gpr[reg_idx] = ref_cpu->gpr[reg_idx];
-    }
-    dut_cpu->pc = ref_cpu->pc;
+    panic("Invalid DiffTest direction %u", direction);
   }
 }
 

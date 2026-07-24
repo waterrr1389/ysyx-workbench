@@ -54,5 +54,9 @@ word_t isa_query_intr();
 // difftest
 bool isa_difftest_checkregs(CPU_state *ref_r, vaddr_t pc);
 void isa_difftest_attach();
+void isa_difftest_export_state(riscv32_difftest_state_t *wire,
+                               const CPU_state *state);
+void isa_difftest_import_state(CPU_state *state,
+                               const riscv32_difftest_state_t *wire);
 
 #endif

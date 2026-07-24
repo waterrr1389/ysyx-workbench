@@ -17,11 +17,19 @@
 #define __ISA_RISCV_H__
 
 #include <common.h>
+#include <difftest/arch/riscv32.h>
+
+enum {
+  RISCV_PRIV_U = 0,
+  RISCV_PRIV_S = 1,
+  RISCV_PRIV_M = 3,
+};
 
 typedef struct {
-  word_t gpr[MUXDEF(CONFIG_RVE, 16, 32)];
+  word_t gpr[32];
   word_t mcause, mstatus, mepc, mtvec;
   vaddr_t pc;
+  uint8_t priv;
 } MUXDEF(CONFIG_RV64, riscv64_CPU_state, riscv32_CPU_state);
 
 // decode
