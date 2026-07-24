@@ -259,8 +259,8 @@ Record results in this form:
 | Hierarchical decode | MicroBench | train | 62,779,553 | 2,602,760 us | 24,120,377 | -1.02% |
 | Hierarchical decode (rerun) | MicroBench | train | 62,779,586 | 2,606,067 us | 24,089,782 | -1.15% |
 | Baseline (current-env rerun) | MicroBench | train | 62,779,553 | 2,666,042 us | 23,547,848 | - |
-| Candidate | MicroBench | train | TBD | TBD | TBD | TBD |
-| Final | MicroBench | ref | TBD | TBD | TBD | TBD |
+| Baseline ref (min of 3) | MicroBench | ref | 1,856,881,453 | 34,561,420 us | 53,726,000 | 643 Marks |
+| Hierarchical ref (min of 3) | MicroBench | ref | 1,856,881,453 | 34,467,638 us | 53,872,000 | 644 Marks |
 
 Baseline environment: x86-64 physical host, clang 22.1.8 with `-O2` and LTO,
 commit `e45fbd1`, release-style RV32 interpreter config (DiffTest, trace,
@@ -278,15 +278,22 @@ remains dependent on source order.
 Hierarchical decode measurement (steps 4-6): after the switch-based decoder,
 the disassembled `cpu_exec()` shrinks to about 690 host instructions with 41
 compares and 8 indirect jumps (compiler-generated jump tables). All 35 CPU
-tests pass. Host timing noise over minutes is significant on this machine:
-the apparent ~1% regression of the C++ migration disappeared when the pristine
-baseline was rebuilt in a worktree and rerun back-to-back (23,547,848 inst/s
-baseline vs 24,089,782 inst/s hierarchical, i.e. about +2.3% for the
-hierarchical decoder in the same environment window). Comparisons must be
-made back-to-back; absolute numbers from different time windows are not
-comparable. Decode is no longer a material bottleneck after hierarchical
-decoding, so per step 6 the decode cache and dispatch alternatives are left
-unevaluated.
+tests pass.
+
+Benchmark methodology warning: this host uses the `powersave` cpufreq
+governor (idle at ~1.5 GHz, boost ~3.6 GHz), and short runs start at a
+ramping frequency. All `train`-scale comparisons (2.6 s host time) proved
+unusable: identical binaries differed by over 50% in host time between runs
+minutes apart, and an apparent ~1% regression of the C++ migration as well as
+an apparent ~2.3% gain of hierarchical decoding were both frequency-ramp
+artifacts. Valid procedure on this host: `ref` scale, 3+ alternating runs per
+binary, compare minimum host time. Under that procedure the pristine baseline
+and the hierarchical decoder tie at 34.56 s vs 34.47 s for 1,856,881,453
+guest instructions (+0.27%, inside the +/-0.9% run-to-run spread; 643 vs 644
+Marks). Conclusion: hierarchical decoding is performance-neutral on this
+workload because the compiler already folded the pattern chain adequately;
+its benefit is maintainability. Decode is not a material bottleneck, so per
+step 6 the decode cache and dispatch alternatives are left unevaluated.
 
 ## Validation
 
