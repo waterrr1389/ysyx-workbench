@@ -43,11 +43,11 @@ bool cte_init(Context*(*handler)(Event, Context*)) {
 
 Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
   // Place the initial context immediately below the stack's high address.
-  Context *c = (Context *)kstack.end - 1;
-  *c = (Context) {
-    .mstatus = 0x1800u,
-    .mepc = (uintptr_t)entry,
-  };
+  uintptr_t context_addr = (uintptr_t)kstack.end - sizeof(Context);
+  Context *c = (Context *)context_addr;
+  memset(c, 0, sizeof(Context));
+  c->mstatus = 0x1800u;
+  c->mepc = (uintptr_t)entry;
   (void)arg;
   return c;
 }
