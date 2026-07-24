@@ -15,18 +15,13 @@
 
 #include <isa.h>
 
-word_t isa_raise_intr(word_t NO, vaddr_t epc) {
-  switch (NO) {
-    case 8: // env call
-      cpu.mcause = 8;
-      cpu.mepc = epc;
-      IFDEF(CONFIG_ETRACE, Log("etrace: NO=%d epc=" FMT_WORD " mtvec=" FMT_WORD,
-                                NO, epc, cpu.mtvec));
-      break;  
-    default:
-    ;
-  }
-  
+word_t isa_raise_intr(word_t cause, vaddr_t epc) {
+  cpu.mcause = cause;
+  cpu.mepc = epc;
+  IFDEF(CONFIG_ETRACE,
+      Log("etrace: cause=" FMT_WORD " epc=" FMT_WORD " mtvec=" FMT_WORD,
+          cause, epc, cpu.mtvec));
+
   return cpu.mtvec;
 }
 

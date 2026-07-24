@@ -171,6 +171,17 @@ static void csr_write(word_t addr, word_t val) {
   }
 }
 
+static word_t ecall_cause(void) {
+  switch (cpu.priv) {
+    case RISCV_PRIV_U: return 8;
+    case RISCV_PRIV_S: return 9;
+    case RISCV_PRIV_M: return 11;
+    default:
+      panic("Invalid RISC-V privilege mode %u", (unsigned)cpu.priv);
+      return 0;
+  }
+}
+
 static int decode_exec(Decode *s) {
   s->dnpc = s->snpc;
 
@@ -302,8 +313,8 @@ static int decode_exec(Decode *s) {
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak, N,
           NEMUTRAP(s->pc, R(10))); // R(10) is $a0
 
-  // 8 - Environment call from U-mode
-  INSTPAT("000000000000 00000 000 00000 1110011", ecall, N, s->dnpc = isa_raise_intr(8, s->snpc);); 
+  INSTPAT("000000000000 00000 000 00000 1110011", ecall, N,
+          s->dnpc = isa_raise_intr(ecall_cause(), s->pc););
   INSTPAT("??????? ????? ????? 001 ????? 11100 11", csrrw, CSR_R, word_t old = csr_read(imm); csr_write(imm, src1); if (rd != 0) R(rd) = old;);
   INSTPAT("??????? ????? ????? 010 ????? 11100 11", csrrs, CSR_R, word_t old = csr_read(imm); csr_write(imm, old | src1); if (rd != 0) R(rd) = old;);
   INSTPAT("??????? ????? ????? 011 ????? 11100 11", csrrc, CSR_R, word_t old = csr_read(imm); csr_write(imm, old & ~src1); if (rd != 0) R(rd) = old;);
