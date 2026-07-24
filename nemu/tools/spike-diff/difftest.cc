@@ -14,9 +14,11 @@
 ***************************************************************************************/
 
 #include "mmu.h"
+#include "processor.h"
 #include "sim.h"
 #include "../../include/common.h"
 #include <difftest-def.h>
+#include <cassert>
 
 #define NR_GPR MUXDEF(CONFIG_RVE, 16, 32)
 
@@ -38,6 +40,7 @@ static debug_module_config_t difftest_dm_config = {
 
 struct diff_context_t {
   word_t gpr[MUXDEF(CONFIG_RVE, 16, 32)];
+  word_t mcause, mstatus, mepc, mtvec;
   word_t pc;
 };
 
@@ -55,19 +58,29 @@ void sim_t::diff_step(uint64_t n) {
 }
 
 void sim_t::diff_get_regs(void* diff_context) {
-  struct diff_context_t* ctx = (struct diff_context_t*)diff_context;
+  assert(diff_context != nullptr);
+  auto& ctx = *static_cast<diff_context_t*>(diff_context);
   for (int i = 0; i < NR_GPR; i++) {
-    ctx->gpr[i] = state->XPR[i];
+    ctx.gpr[i] = static_cast<word_t>(state->XPR[i]);
   }
-  ctx->pc = state->pc;
+  ctx.mcause = static_cast<word_t>(state->mcause->read());
+  ctx.mstatus = static_cast<word_t>(state->mstatus->read());
+  ctx.mepc = static_cast<word_t>(state->mepc->read());
+  ctx.mtvec = static_cast<word_t>(state->mtvec->read());
+  ctx.pc = static_cast<word_t>(state->pc);
 }
 
 void sim_t::diff_set_regs(void* diff_context) {
-  struct diff_context_t* ctx = (struct diff_context_t*)diff_context;
+  assert(diff_context != nullptr);
+  const auto& ctx = *static_cast<const diff_context_t*>(diff_context);
   for (int i = 0; i < NR_GPR; i++) {
-    state->XPR.write(i, (sword_t)ctx->gpr[i]);
+    state->XPR.write(i, static_cast<sword_t>(ctx.gpr[i]));
   }
-  state->pc = ctx->pc;
+  state->mcause->write(static_cast<reg_t>(ctx.mcause));
+  state->mstatus->write(static_cast<reg_t>(ctx.mstatus));
+  state->mepc->write(static_cast<reg_t>(ctx.mepc));
+  state->mtvec->write(static_cast<reg_t>(ctx.mtvec));
+  state->pc = static_cast<reg_t>(ctx.pc);
 }
 
 void sim_t::diff_memcpy(reg_t dest, void* src, size_t n) {
