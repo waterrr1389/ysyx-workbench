@@ -262,6 +262,11 @@ Record results in this form:
 | Baseline ref (min of 3) | MicroBench | ref | 1,856,881,453 | 34,561,420 us | 53,726,000 | 643 Marks |
 | Hierarchical ref (min of 3) | MicroBench | ref | 1,856,881,453 | 34,467,638 us | 53,872,000 | 644 Marks |
 | Hierarchical + timer throttle | MicroBench | ref | 1,856,881,308 | 5,257,191 us | 353,207,883 | 3854 Marks |
+| Final head-to-head: baseline (min of 3) | MicroBench | ref | 1,856,881,453 | 34,329,635 us | 54,089,747 | 647 Marks |
+| Final head-to-head: rewritten (min of 3) | MicroBench | ref | 1,856,881,334 | 4,926,518 us | 376,915,564 | 4354 Marks |
+
+Final head-to-head (pristine worktree vs rewritten tree, alternating runs,
+min host time): **6.97x** host-time reduction, 647 -> 4354 Marks.
 
 ## Host-timer bottleneck (found by perf, fixed out of original scope)
 
