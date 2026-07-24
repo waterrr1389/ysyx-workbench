@@ -19,6 +19,8 @@
 #include "../../include/common.h"
 #include <difftest-def.h>
 #include <cassert>
+#include <cstdio>
+#include <cstdlib>
 
 #define NR_GPR MUXDEF(CONFIG_RVE, 16, 32)
 
@@ -51,6 +53,18 @@ using diff_context_t = riscv32_difftest_state_t;
 static sim_t* s = NULL;
 static processor_t *p = NULL;
 static state_t *state = NULL;
+
+#if !defined(CONFIG_RV64)
+static bool valid_privilege(uint32_t priv) {
+  return priv == PRV_U || priv == PRV_S || priv == PRV_M;
+}
+
+[[noreturn]] static void reject_abi_value(
+    const char* field, uint32_t value) {
+  std::fprintf(stderr, "Invalid RV32 DiffTest %s value %u\n", field, value);
+  std::abort();
+}
+#endif
 
 void sim_t::diff_init(int port) {
   p = get_core("0");
@@ -88,7 +102,9 @@ void sim_t::diff_set_regs(void* diff_context) {
     state->XPR.write(i, static_cast<sword_t>(ctx.gpr[i]));
   }
 #if !defined(CONFIG_RV64)
-  assert(ctx.priv == PRV_U || ctx.priv == PRV_S || ctx.priv == PRV_M);
+  if (!valid_privilege(ctx.priv)) {
+    reject_abi_value("privilege", ctx.priv);
+  }
 #endif
   state->mcause->write(static_cast<reg_t>(ctx.mcause));
   state->mstatus->write(static_cast<reg_t>(ctx.mstatus));
@@ -136,7 +152,7 @@ __EXPORT void difftest_regcpy(
   } else if (direction == DIFFTEST_TO_DUT) {
     s->diff_get_regs(dut);
   } else {
-    assert(false);
+    reject_abi_value("direction", direction);
   }
 }
 #else

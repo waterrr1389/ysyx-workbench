@@ -176,7 +176,9 @@ static word_t ecall_cause(void) {
     case RISCV_PRIV_U: return 8;
     case RISCV_PRIV_S: return 9;
     case RISCV_PRIV_M: return 11;
-    default: panic("Invalid RISC-V privilege mode %u", cpu.priv); return 0;
+    default:
+      panic("Invalid RISC-V privilege mode %u", (unsigned)cpu.priv);
+      return 0;
   }
 }
 
