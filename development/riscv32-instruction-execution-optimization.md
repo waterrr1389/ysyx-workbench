@@ -261,6 +261,30 @@ Record results in this form:
 | Baseline (current-env rerun) | MicroBench | train | 62,779,553 | 2,666,042 us | 23,547,848 | - |
 | Baseline ref (min of 3) | MicroBench | ref | 1,856,881,453 | 34,561,420 us | 53,726,000 | 643 Marks |
 | Hierarchical ref (min of 3) | MicroBench | ref | 1,856,881,453 | 34,467,638 us | 53,872,000 | 644 Marks |
+| Hierarchical + timer throttle | MicroBench | ref | 1,856,881,308 | 5,257,191 us | 353,207,883 | 3854 Marks |
+
+## Host-timer bottleneck (found by perf, fixed out of original scope)
+
+`perf record` on a `ref` run showed 74.85% of all host cycles in
+`__vdso_gettimeofday` and only 24.66% in `cpu_exec`. Root cause:
+`execute()` in `nemu/src/cpu/cpu-exec.c` calls `device_update()` once per
+guest instruction, and `device_update()` read the host clock on every call
+even though it only acts at `TIMER_HZ` (60 Hz). A `ref` run therefore made
+about 1.86 billion `gettimeofday()` calls.
+
+Fix (approved, applied to `nemu/src/device/device.c`): `device_update()` now
+polls the host clock only every `DEVICE_UPDATE_INTERVAL` (1024) calls; the
+60 Hz device-update semantics are unchanged. This is the "minimal interface
+for profiling or cache lifecycle" situation the conditional scope of
+`nemu/src/cpu/cpu-exec.c` anticipated, resolved without touching the shared
+loop.
+
+Result: `ref` host time 34.56 s -> 5.26 s (6.6x), 353 M guest inst/s, 3854
+Marks. A second `perf` run shows 98.5% of cycles in `cpu_exec` and 0.42% in
+`__vdso_gettimeofday`. All 35 CPU tests still pass. Note that the timer
+overhead was masking the interpreter core: the core was always capable of
+~350 M inst/s, so earlier per-instruction-cycle reasoning based on absolute
+`inst/s` numbers must be redone against this new baseline.
 
 Baseline environment: x86-64 physical host, clang 22.1.8 with `-O2` and LTO,
 commit `e45fbd1`, release-style RV32 interpreter config (DiffTest, trace,
