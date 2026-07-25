@@ -1,3 +1,4 @@
+# Select exactly one RV32 instruction decoder.
 ifeq ($(CONFIG_RISCV_HIERARCHICAL_DECODE),y)
 SRCS-BLACKLIST-y += src/isa/riscv32/inst.c
 else

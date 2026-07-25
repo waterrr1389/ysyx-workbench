@@ -10,6 +10,7 @@ config RVE
 
 config RISCV_HIERARCHICAL_DECODE
   bool "Use hierarchical instruction decoder"
+  depends on !RV64
   default n
   help
     Use the optimized opcode-grouped decoder. Keep this disabled to use the
