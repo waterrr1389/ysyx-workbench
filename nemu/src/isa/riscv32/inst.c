@@ -21,6 +21,10 @@
 #include <cpu/ifetch.h>
 #include <stdint.h>
 
+#ifndef CONFIG_RISCV_DECODER_INSTPAT
+#error "inst.c requires the INSTPAT decoder configuration"
+#endif
+
 #define R(i) gpr(i)
 #define Mr vaddr_read
 #define Mw vaddr_write
