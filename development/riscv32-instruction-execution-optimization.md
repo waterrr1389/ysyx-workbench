@@ -1,6 +1,6 @@
 # RV32 Instruction Execution Optimization
 
-Status: Draft
+Status: Completed
 
 ## Context
 
@@ -41,7 +41,7 @@ a JIT or basic-block translator.
 
 Primary:
 
-- `nemu/src/isa/riscv32/inst.c`
+- `nemu/src/isa/riscv32/inst.cc`
 - RV32 ISA-local build declarations required for a C++ source file
 
 Conditional:
@@ -324,13 +324,20 @@ unusable: identical binaries differed by over 50% in host time between runs
 minutes apart, and an apparent ~1% regression of the C++ migration as well as
 an apparent ~2.3% gain of hierarchical decoding were both frequency-ramp
 artifacts. Valid procedure on this host: `ref` scale, 3+ alternating runs per
-binary, compare minimum host time. Under that procedure the pristine baseline
-and the hierarchical decoder tie at 34.56 s vs 34.47 s for 1,856,881,453
-guest instructions (+0.27%, inside the +/-0.9% run-to-run spread; 643 vs 644
-Marks). Conclusion: hierarchical decoding is performance-neutral on this
-workload because the compiler already folded the pattern chain adequately;
-its benefit is maintainability. Decode is not a material bottleneck, so per
-step 6 the decode cache and dispatch alternatives are left unevaluated.
+binary, compare minimum host time.
+
+Before the timer throttle, the pristine decoder and hierarchical decoder tie
+at 34.56 s and 34.47 s because host clock polling consumes about three
+quarters of all host cycles. This comparison only shows that the decoder
+difference was masked by a larger framework bottleneck. With the same timer
+throttle applied to both versions, the original decoder reaches 5.29 s while
+the hierarchical decoder reaches 4.63 s. The isolated decoder improvement is
+therefore approximately 12-14%, in addition to its maintainability benefit.
+
+The timer throttle and hierarchical decoder are both retained. This work stops
+without a decoded instruction cache or alternative dispatch implementation
+because the accepted changes already provide a clear improvement. Reopening
+those optional experiments requires a new measurement-driven decision.
 
 ## Validation
 
@@ -379,10 +386,11 @@ Keep these as separate logical changes:
 1. baseline and profiling support;
 2. behavior-preserving C++ migration;
 3. hierarchical decode;
-4. execution primitive cleanup;
-5. optional decode cache;
-6. optional dispatch experiment;
-7. final benchmark record.
+4. host-clock polling throttle;
+5. execution primitive cleanup;
+6. optional decode cache;
+7. optional dispatch experiment;
+8. final benchmark record.
 
 Each performance change must be independently revertible. A failed experiment
 must not force rollback of the accepted C++ migration or earlier decoder
@@ -407,8 +415,7 @@ cleanup.
 
 - Which benchmark and instruction mix best represent the intended future Linux
   reference workload?
-- Does the compiler already optimize the current pattern chain enough that
-  hierarchical decoding provides only a maintainability benefit?
-- After hierarchical decoding, is a decoded instruction cache still justified?
+- Should decode caching be reconsidered only after a future Linux workload
+  demonstrates that decode remains a material bottleneck?
 - Should the C++ migration remain limited to RV32 instruction execution, or is
   there a later measured reason to move part of the shared CPU loop?

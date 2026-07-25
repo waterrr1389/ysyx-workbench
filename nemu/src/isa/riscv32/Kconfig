@@ -7,4 +7,11 @@ config RV64
 config RVE
   bool "Use E extension"
   default n
+
+config RISCV_HIERARCHICAL_DECODE
+  bool "Use hierarchical instruction decoder"
+  default n
+  help
+    Use the optimized opcode-grouped decoder. Keep this disabled to use the
+    INSTPAT decoder, which is the default implementation for ISA development.
 endmenu

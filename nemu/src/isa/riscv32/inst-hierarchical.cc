@@ -21,7 +21,6 @@ extern "C" {
 #include <cpu/decode.h>
 #include <cpu/ifetch.h>
 }
-#include "capstone/arm.h"
 #include <stdint.h>
 
 #define R(i) gpr(i)
