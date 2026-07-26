@@ -10,10 +10,11 @@ CONFIG_GENERATOR := scripts/gen_config.py
 CONFIG_NAME := $(basename $(notdir $(CONFIG)))
 CONFIG_HEADER := $(abspath $(BUILD_DIR)/generated/$(CONFIG_NAME)/npc_config.h)
 
-INC_PATH += $(NPC_HOME)/include $(dir $(CONFIG_HEADER))
+INC_PATH += $(NPC_HOME)/include $(NEMU_HOME)/include $(dir $(CONFIG_HEADER))
 INCFLAGS += $(addprefix -CFLAGS -I, $(INC_PATH))
 VSRCS = $(shell find $(abspath ./vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath ./csrc) $(abspath ./trace) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
+CSRCS += $(NEMU_HOME)/tools/difftest-client/reference.cc
 IMG := ./dummy.bin
 ARGS ?=
 
