@@ -1,6 +1,6 @@
 # NPC Host Infrastructure Evolution
 
-Status: In Progress
+Status: Completed
 
 ## Context and observed baseline
 
@@ -97,6 +97,8 @@ classes are host-side implementation details only.
 - Dynamic-library loading is host-side C++ work and may use a class.
 - The loader must own the library handle and typed symbol resolution.
 - ABI version and state size must be validated before register transfer.
+- Initialization errors are fatal and reported by the shared client without
+  C++ exceptions crossing the NEMU or NPC call boundary.
 - The caller-facing interface should express state transfer direction through
   separate get-state and set-state operations rather than repeated raw
   direction arguments.
@@ -245,32 +247,33 @@ Rollback removes only the formatter configuration.
 
 Rollback restores the existing Make definitions and fallback header.
 
-### 4. Migrate NPC to the canonical RV32 ABI
-
-- Include the canonical RV32 state definition.
-- Remove NPC's copied state layout, direction constants, and legacy symbol
-  declarations.
-- Add ABI version and state-size rejection before state transfer.
-- Add an NPC-specific export adapter for the architectural state it currently
-  implements.
-
-Rollback returns NPC to its old reference library and caller as one unit.
-
-### 5. Extract the shared reference client
+### 4. Extract the shared reference client
 
 - Introduce the C++ shared-library wrapper.
+- Keep the wrapper independent from either DUT's private state and diagnostics.
+
+Rollback removes only the unused wrapper.
+
+### 5. Migrate NEMU
+
 - Migrate NEMU without changing its step semantics.
 - Validate NEMU before modifying NPC.
-- Migrate NPC and remove its copied loader and symbol-resolution code.
 
-Each caller migration is a separate commit and rollback boundary.
+Rollback restores NEMU's former loader and `.c` caller.
 
-### 6. Remove obsolete protocol copies
+### 6. Migrate NPC and remove obsolete protocol copies
 
+- Include the canonical RV32 state definition.
+- Remove NPC's copied state layout, direction constants, legacy symbol
+  declarations, and loader.
+- Add an NPC-specific export adapter for the architectural state it currently
+  implements.
 - Confirm that both callers use the shared initialization and one-step
   operations.
 - Remove copied symbol tables, dynamic loading, and direction dispatch.
 - Preserve each DUT's adapter, diagnostics, skip behavior, and stop policy.
+
+Rollback returns NPC to its old reference library and caller as one unit.
 
 ## Risks and failure modes
 
@@ -339,3 +342,24 @@ make -C npc run
 Trace-profile validation must record the selected profile, generated macros,
 build command, image, reference model, expected trace output, and whether a
 timeout is intentional.
+
+## Validation results
+
+Validation completed on 2026-07-26 with the RV32 NEMU configuration, Spike as
+the reference model, and DiffTest enabled.
+
+- `make -C nemu -j$(nproc)` completed successfully.
+- `make -C nemu/tools/spike-diff GUEST_ISA=riscv32` completed successfully.
+- The focused `dummy` CPU test passed with DiffTest enabled.
+- The full CPU regression passed all 35 tests with
+  `ARCH=riscv32-nemu -j 1`.
+- `make -C npc clean` followed by
+  `make -C npc sim CONFIG=configs/default.toml` completed successfully.
+- NPC ran `dummy-riscv32-nemu.bin` in batch mode against the RV32 Spike shared
+  library and reached `HIT GOOD TRAP`.
+- The default and trace NPC configuration profiles both completed full
+  Verilator builds. Unknown trace keys were rejected before compilation.
+
+NPC still compares only GPRs and PC because its RTL does not expose the
+canonical privileged state. The adapter initializes the remaining canonical
+fields for reference startup but does not claim to verify them.
