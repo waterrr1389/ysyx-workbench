@@ -1,9 +1,10 @@
 #include "base/debug.h"
+#include "base/config.h"
 #include "sim/dpi-c.h"
 #include "sim/pmem.h"
 #include "sim/sim_main.h"
-#include "trace/trace_config.h"
 
+#if NPC_MTRACE
 static int popcount4(uint8_t mask) {
   int count = 0;
   for (int i = 0; i < 4; i++) {
@@ -13,6 +14,7 @@ static int popcount4(uint8_t mask) {
   }
   return count;
 }
+#endif
 
 int pmem_read(int raddr) {
   word_t addr = (word_t)raddr & ~0x3u;
