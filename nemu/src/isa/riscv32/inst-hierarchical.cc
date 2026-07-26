@@ -21,8 +21,11 @@ extern "C" {
 #include <cpu/decode.h>
 #include <cpu/ifetch.h>
 }
-#include "capstone/arm.h"
 #include <stdint.h>
+
+#ifndef CONFIG_RISCV_DECODER_HIERARCHICAL
+#error "inst-hierarchical.cc requires the hierarchical decoder configuration"
+#endif
 
 #define R(i) gpr(i)
 #define Mr vaddr_read
