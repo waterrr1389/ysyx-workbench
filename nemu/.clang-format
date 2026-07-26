@@ -1,0 +1,33 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+
+ColumnLimit: 100
+IndentWidth: 2
+ContinuationIndentWidth: 4
+TabWidth: 8
+UseTab: Never
+
+ReflowComments: false
+SortIncludes: Never
+
+SkipMacroDefinitionBody: true
+WhitespaceSensitiveMacros:
+  - INSTPAT
+
+BreakBeforeBraces: Attach
+IndentCaseLabels: false
+
+DerivePointerAlignment: false
+PointerAlignment: Right
+
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortBlocksOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+FixNamespaceComments: false
+InsertBraces: false
+QualifierAlignment: Leave
+SeparateDefinitionBlocks: Leave
+...
