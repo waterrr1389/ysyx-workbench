@@ -131,7 +131,7 @@ classes are host-side implementation details only.
 
 Introduce a NEMU-owned C++ `Riscv32DifftestReference` abstraction in
 `nemu/include/difftest/reference.hpp` and
-`nemu/src/cpu/difftest/reference.cc` with these
+`nemu/tools/difftest-client/reference.cc` with these
 responsibilities:
 
 - acquire and release the dynamic-library handle;

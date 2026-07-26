@@ -14,6 +14,7 @@
 #**************************************************************************************/
 
 SRCS-y += src/nemu-main.c
+CXXSRC-$(CONFIG_DIFFTEST) += tools/difftest-client/reference.cc
 DIRS-y += src/cpu src/monitor src/utils
 DIRS-$(CONFIG_MODE_SYSTEM) += src/memory
 DIRS-BLACKLIST-$(CONFIG_TARGET_AM) += src/monitor/sdb
