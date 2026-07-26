@@ -81,22 +81,22 @@ void init_difftest(char *ref_so_file, long img_size, int port) {
   difftest_query_u32_t get_abi_version =
       dlsym(handle, "difftest_get_abi_version");
   Assert(get_abi_version != NULL,
-      "RV32 DiffTest reference is missing difftest_get_abi_version");
+         "RV32 DiffTest reference is missing difftest_get_abi_version");
 
   difftest_query_u32_t get_state_size =
       dlsym(handle, "difftest_get_state_size");
   Assert(get_state_size != NULL,
-      "RV32 DiffTest reference is missing difftest_get_state_size");
+         "RV32 DiffTest reference is missing difftest_get_state_size");
 
   uint32_t abi_version = get_abi_version();
   Assert(abi_version == RISCV32_DIFFTEST_ABI_VERSION,
-      "RV32 DiffTest ABI version mismatch: expected %u, got %u",
-      RISCV32_DIFFTEST_ABI_VERSION, abi_version);
+         "RV32 DiffTest ABI version mismatch: expected %u, got %u",
+         RISCV32_DIFFTEST_ABI_VERSION, abi_version);
 
   uint32_t state_size = get_state_size();
   Assert(state_size == sizeof(riscv32_difftest_state_t),
-      "RV32 DiffTest state size mismatch: expected %u, got %u",
-      (unsigned)sizeof(riscv32_difftest_state_t), state_size);
+         "RV32 DiffTest state size mismatch: expected %u, got %u",
+         (unsigned)sizeof(riscv32_difftest_state_t), state_size);
 
   ref_difftest_memcpy = dlsym(handle, "difftest_memcpy");
   assert(ref_difftest_memcpy);

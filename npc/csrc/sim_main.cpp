@@ -16,6 +16,7 @@
 #include "sim/pmem.h"
 #include "sim/sdb.h"
 #include "sim/sim_main.h"
+#include "trace/trace_config.h"
 #include "trace/disasm.h"
 #include "trace/ftrace.h"
 #include "trace/iRingBuffer.h"
@@ -25,16 +26,6 @@
 #define A0_REG_INDEX    10u
 #define GPR_SCOPE_NAME  "TOP.top.rf0"
 static const char* REF_SO_FILE = "/home/frisk/ysyx-workbench/nemu/build/riscv32-nemu-interpreter-so";
-
-#ifndef NPC_ITRACE
-#define NPC_ITRACE 0
-#endif
-
-#ifndef NPC_FTRACE
-#define NPC_FTRACE 0
-#endif
-
-#define NPC_NEED_INST_TRACE (NPC_ITRACE || NPC_FTRACE)
 
 Vtop* top;
 VerilatedContext* contextp;

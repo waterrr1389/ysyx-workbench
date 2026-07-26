@@ -22,8 +22,8 @@ bool isa_difftest_checkregs(CPU_state *ref_cpu, vaddr_t pc) {
   const word_t *dut_gpr = cpu.gpr;
 
   for (int reg_idx = 0; reg_idx < ARRLEN(cpu.gpr); reg_idx++) {
-    if (!difftest_check_reg(
-          reg_name(reg_idx), pc, ref_gpr[reg_idx], dut_gpr[reg_idx])) {
+    if (!difftest_check_reg(reg_name(reg_idx), pc, ref_gpr[reg_idx],
+                            dut_gpr[reg_idx])) {
       return false;
     }
   }

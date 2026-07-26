@@ -34,8 +34,8 @@ __EXPORT void difftest_memcpy(paddr_t addr, void *buf, size_t n, bool direction)
   }
 }
 
-__EXPORT void difftest_regcpy(
-    riscv32_difftest_state_t *dut, uint32_t direction) {
+__EXPORT void difftest_regcpy(riscv32_difftest_state_t *dut,
+                              uint32_t direction) {
   assert(dut != NULL);
 
   if (direction == DIFFTEST_TO_REF) {

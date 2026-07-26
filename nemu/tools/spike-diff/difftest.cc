@@ -48,8 +48,7 @@ static bool valid_privilege(uint32_t priv) {
   return priv == PRV_U || priv == PRV_S || priv == PRV_M;
 }
 
-[[noreturn]] static void reject_abi_value(
-    const char* field, uint32_t value) {
+[[noreturn]] static void reject_abi_value(const char *field, uint32_t value) {
   std::fprintf(stderr, "Invalid RV32 DiffTest %s value %u\n", field, value);
   std::abort();
 }
@@ -63,9 +62,9 @@ void sim_t::diff_step(uint64_t n) {
   step(n);
 }
 
-void sim_t::diff_get_regs(void* diff_context) {
+void sim_t::diff_get_regs(void *diff_context) {
   assert(diff_context != nullptr);
-  auto& ctx = *static_cast<diff_context_t*>(diff_context);
+  auto &ctx = *static_cast<diff_context_t *>(diff_context);
   for (size_t i = 0; i < RISCV32_DIFFTEST_GPR_COUNT; i++) {
     ctx.gpr[i] = static_cast<uint32_t>(state->XPR[i]);
   }
@@ -78,9 +77,9 @@ void sim_t::diff_get_regs(void* diff_context) {
   ctx.pc = static_cast<uint32_t>(state->pc);
 }
 
-void sim_t::diff_set_regs(void* diff_context) {
+void sim_t::diff_set_regs(void *diff_context) {
   assert(diff_context != nullptr);
-  const auto& ctx = *static_cast<const diff_context_t*>(diff_context);
+  const auto &ctx = *static_cast<const diff_context_t *>(diff_context);
   if (!valid_privilege(ctx.priv)) {
     reject_abi_value("privilege", ctx.priv);
   }
@@ -120,8 +119,8 @@ __EXPORT void difftest_memcpy(paddr_t addr, void *buf, size_t n, bool direction)
   }
 }
 
-__EXPORT void difftest_regcpy(
-    riscv32_difftest_state_t* dut, uint32_t direction) {
+__EXPORT void difftest_regcpy(riscv32_difftest_state_t *dut,
+                              uint32_t direction) {
   assert(dut != nullptr);
   if (direction == DIFFTEST_TO_REF) {
     s->diff_set_regs(dut);
