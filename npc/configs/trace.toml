@@ -1,0 +1,4 @@
+[trace]
+instruction = true
+function = true
+memory = true
