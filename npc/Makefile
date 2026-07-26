@@ -5,27 +5,25 @@ VERILATOR_FLAGS := --trace-fst -cc --exe --build -j --top-module top --Mdir buil
 CFLAGS := -CFLAGS -Wall -CFLAGS -Werror -CFLAGS -Wno-unused-function -CFLAGS -ggdb3
 # 每个传递给链接器的参数前面都要加-LDFLAGS
 LDFLAGS := -LDFLAGS -lreadline
-INC_PATH += $(NPC_HOME)/include
+CONFIG ?= configs/default.toml
+CONFIG_GENERATOR := scripts/gen_config.py
+CONFIG_NAME := $(basename $(notdir $(CONFIG)))
+CONFIG_HEADER := $(abspath $(BUILD_DIR)/generated/$(CONFIG_NAME)/npc_config.h)
+
+INC_PATH += $(NPC_HOME)/include $(dir $(CONFIG_HEADER))
 INCFLAGS += $(addprefix -CFLAGS -I, $(INC_PATH))
 VSRCS = $(shell find $(abspath ./vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath ./csrc) $(abspath ./trace) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 IMG := ./dummy.bin
 ARGS ?=
-ITRACE ?= 0
-FTRACE ?= 0
 
-ifeq ($(ITRACE),1)
-CFLAGS += -CFLAGS -DNPC_ITRACE=1
-endif
-
-ifeq ($(FTRACE),1)
-CFLAGS += -CFLAGS -DNPC_FTRACE=1
-endif
-
-sim: $(BUILD_DIR)
+sim: $(CONFIG_HEADER) $(BUILD_DIR)
 	$(VERILATOR) $(VERILATOR_FLAGS) $(CFLAGS) $(LDFLAGS) $(INCFLAGS) $(VSRCS) $(CSRCS)  
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
 	@echo "Write this Makefile by your self."
+
+$(CONFIG_HEADER): $(CONFIG) $(CONFIG_GENERATOR)
+	python3 $(CONFIG_GENERATOR) --input $(CONFIG) --output $@
 
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
