@@ -17,9 +17,7 @@
 #define __ISA_RISCV_H__
 
 #include <common.h>
-#if !defined(CONFIG_RV64)
 #include <difftest/arch/riscv32.h>
-#endif
 
 enum {
   RISCV_PRIV_U = 0,
@@ -28,7 +26,7 @@ enum {
 };
 
 typedef struct {
-  word_t gpr[MUXDEF(CONFIG_RVE, 16, 32)];
+  word_t gpr[32];
   word_t mcause, mstatus, mepc, mtvec;
   vaddr_t pc;
   uint8_t priv;

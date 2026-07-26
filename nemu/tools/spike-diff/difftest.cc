@@ -22,8 +22,6 @@
 #include <cstdio>
 #include <cstdlib>
 
-#define NR_GPR MUXDEF(CONFIG_RVE, 16, 32)
-
 static std::vector<std::pair<reg_t, abstract_device_t*>> difftest_plugin_devices;
 static std::vector<std::string> difftest_htif_args;
 static std::vector<std::pair<reg_t, mem_t*>> difftest_mem(
@@ -40,21 +38,12 @@ static debug_module_config_t difftest_dm_config = {
   .support_impebreak = true
 };
 
-#if defined(CONFIG_RV64)
-struct diff_context_t {
-  word_t gpr[MUXDEF(CONFIG_RVE, 16, 32)];
-  word_t mcause, mstatus, mepc, mtvec;
-  word_t pc;
-};
-#else
 using diff_context_t = riscv32_difftest_state_t;
-#endif
 
 static sim_t* s = NULL;
 static processor_t *p = NULL;
 static state_t *state = NULL;
 
-#if !defined(CONFIG_RV64)
 static bool valid_privilege(uint32_t priv) {
   return priv == PRV_U || priv == PRV_S || priv == PRV_M;
 }
@@ -64,7 +53,6 @@ static bool valid_privilege(uint32_t priv) {
   std::fprintf(stderr, "Invalid RV32 DiffTest %s value %u\n", field, value);
   std::abort();
 }
-#endif
 
 void sim_t::diff_init(int port) {
   p = get_core("0");
@@ -78,42 +66,33 @@ void sim_t::diff_step(uint64_t n) {
 void sim_t::diff_get_regs(void* diff_context) {
   assert(diff_context != nullptr);
   auto& ctx = *static_cast<diff_context_t*>(diff_context);
-  for (int i = 0; i < NR_GPR; i++) {
-    ctx.gpr[i] = static_cast<word_t>(state->XPR[i]);
-  }
-#if !defined(CONFIG_RV64)
-  for (size_t i = NR_GPR; i < RISCV32_DIFFTEST_GPR_COUNT; i++) {
-    ctx.gpr[i] = 0;
+  for (size_t i = 0; i < RISCV32_DIFFTEST_GPR_COUNT; i++) {
+    ctx.gpr[i] = static_cast<uint32_t>(state->XPR[i]);
   }
   ctx.gpr[0] = 0;
   ctx.priv = static_cast<uint32_t>(state->prv);
-#endif
-  ctx.mcause = static_cast<word_t>(state->mcause->read());
-  ctx.mstatus = static_cast<word_t>(state->mstatus->read());
-  ctx.mepc = static_cast<word_t>(state->mepc->read());
-  ctx.mtvec = static_cast<word_t>(state->mtvec->read());
-  ctx.pc = static_cast<word_t>(state->pc);
+  ctx.mcause = static_cast<uint32_t>(state->mcause->read());
+  ctx.mstatus = static_cast<uint32_t>(state->mstatus->read());
+  ctx.mepc = static_cast<uint32_t>(state->mepc->read());
+  ctx.mtvec = static_cast<uint32_t>(state->mtvec->read());
+  ctx.pc = static_cast<uint32_t>(state->pc);
 }
 
 void sim_t::diff_set_regs(void* diff_context) {
   assert(diff_context != nullptr);
   const auto& ctx = *static_cast<const diff_context_t*>(diff_context);
-  for (int i = 0; i < NR_GPR; i++) {
-    state->XPR.write(i, static_cast<sword_t>(ctx.gpr[i]));
-  }
-#if !defined(CONFIG_RV64)
   if (!valid_privilege(ctx.priv)) {
     reject_abi_value("privilege", ctx.priv);
   }
-#endif
+  for (size_t i = 0; i < RISCV32_DIFFTEST_GPR_COUNT; i++) {
+    state->XPR.write(i, static_cast<sword_t>(ctx.gpr[i]));
+  }
   state->mcause->write(static_cast<reg_t>(ctx.mcause));
   state->mstatus->write(static_cast<reg_t>(ctx.mstatus));
   state->mepc->write(static_cast<reg_t>(ctx.mepc));
   state->mtvec->write(static_cast<reg_t>(ctx.mtvec));
   state->pc = static_cast<reg_t>(ctx.pc);
-#if !defined(CONFIG_RV64)
   p->set_privilege(static_cast<reg_t>(ctx.priv));
-#endif
 }
 
 void sim_t::diff_memcpy(reg_t dest, void* src, size_t n) {
@@ -125,7 +104,6 @@ void sim_t::diff_memcpy(reg_t dest, void* src, size_t n) {
 
 extern "C" {
 
-#if !defined(CONFIG_RV64)
 __EXPORT uint32_t difftest_get_abi_version(void) {
   return RISCV32_DIFFTEST_ABI_VERSION;
 }
@@ -133,7 +111,6 @@ __EXPORT uint32_t difftest_get_abi_version(void) {
 __EXPORT uint32_t difftest_get_state_size(void) {
   return sizeof(riscv32_difftest_state_t);
 }
-#endif
 
 __EXPORT void difftest_memcpy(paddr_t addr, void *buf, size_t n, bool direction) {
   if (direction == DIFFTEST_TO_REF) {
@@ -143,7 +120,6 @@ __EXPORT void difftest_memcpy(paddr_t addr, void *buf, size_t n, bool direction)
   }
 }
 
-#if !defined(CONFIG_RV64)
 __EXPORT void difftest_regcpy(
     riscv32_difftest_state_t* dut, uint32_t direction) {
   assert(dut != nullptr);
@@ -155,15 +131,6 @@ __EXPORT void difftest_regcpy(
     reject_abi_value("direction", direction);
   }
 }
-#else
-__EXPORT void difftest_regcpy(void* dut, bool direction) {
-  if (direction == DIFFTEST_TO_REF) {
-    s->diff_set_regs(dut);
-  } else {
-    s->diff_get_regs(dut);
-  }
-}
-#endif
 
 __EXPORT void difftest_exec(uint64_t n) {
   s->diff_step(n);
@@ -171,7 +138,7 @@ __EXPORT void difftest_exec(uint64_t n) {
 
 __EXPORT void difftest_init(int port) {
   difftest_htif_args.push_back("");
-  const char *isa = "RV" MUXDEF(CONFIG_RV64, "64", "32") MUXDEF(CONFIG_RVE, "E", "I") "MAFDC";
+  const char *isa = "RV32IMAFDC";
   cfg_t cfg(/*default_initrd_bounds=*/std::make_pair((reg_t)0, (reg_t)0),
             /*default_bootargs=*/nullptr,
             /*default_isa=*/isa,

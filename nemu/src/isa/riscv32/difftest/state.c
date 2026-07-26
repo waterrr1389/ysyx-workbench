@@ -1,7 +1,5 @@
 #include <isa.h>
 
-#if !defined(CONFIG_RV64)
-
 static bool valid_privilege(uint32_t priv) {
   return priv == RISCV_PRIV_U ||
          priv == RISCV_PRIV_S ||
@@ -14,7 +12,7 @@ void isa_difftest_export_state(
   assert(state != NULL);
 
   for (size_t i = 0; i < RISCV32_DIFFTEST_GPR_COUNT; i++) {
-    wire->gpr[i] = i < ARRLEN(state->gpr) ? state->gpr[i] : 0;
+    wire->gpr[i] = state->gpr[i];
   }
   wire->gpr[0] = 0;
   wire->pc = state->pc;
@@ -33,7 +31,7 @@ void isa_difftest_import_state(
       "Invalid RV32 privilege encoding %u", wire->priv);
 
   state->gpr[0] = 0;
-  for (size_t i = 1; i < ARRLEN(state->gpr); i++) {
+  for (size_t i = 1; i < RISCV32_DIFFTEST_GPR_COUNT; i++) {
     state->gpr[i] = wire->gpr[i];
   }
   state->pc = wire->pc;
@@ -43,5 +41,3 @@ void isa_difftest_import_state(
   state->mepc = wire->mepc;
   state->mcause = wire->mcause;
 }
-
-#endif

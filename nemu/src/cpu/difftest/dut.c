@@ -22,11 +22,7 @@
 #include <difftest-def.h>
 
 void (*ref_difftest_memcpy)(paddr_t addr, void *buf, size_t n, bool direction) = NULL;
-#if defined(CONFIG_ISA_riscv) && !defined(CONFIG_RV64)
 riscv32_difftest_regcpy_t ref_difftest_regcpy = NULL;
-#else
-void (*ref_difftest_regcpy)(void *dut, bool direction) = NULL;
-#endif
 void (*ref_difftest_exec)(uint64_t n) = NULL;
 void (*ref_difftest_raise_intr)(uint64_t NO) = NULL;
 
@@ -35,7 +31,6 @@ void (*ref_difftest_raise_intr)(uint64_t NO) = NULL;
 static bool is_skip_ref = false;
 static int skip_dut_nr_inst = 0;
 
-#if defined(CONFIG_ISA_riscv) && !defined(CONFIG_RV64)
 static void copy_state_to_ref(const CPU_state *state) {
   riscv32_difftest_state_t wire;
   isa_difftest_export_state(&wire, state);
@@ -47,15 +42,6 @@ static void copy_state_from_ref(CPU_state *state) {
   ref_difftest_regcpy(&wire, DIFFTEST_TO_DUT);
   isa_difftest_import_state(state, &wire);
 }
-#else
-static void copy_state_to_ref(const CPU_state *state) {
-  ref_difftest_regcpy((void *)state, DIFFTEST_TO_REF);
-}
-
-static void copy_state_from_ref(CPU_state *state) {
-  ref_difftest_regcpy(state, DIFFTEST_TO_DUT);
-}
-#endif
 
 // this is used to let ref skip instructions which
 // can not produce consistent behavior with NEMU
@@ -92,7 +78,6 @@ void init_difftest(char *ref_so_file, long img_size, int port) {
   handle = dlopen(ref_so_file, RTLD_LAZY);
   assert(handle);
 
-#if defined(CONFIG_ISA_riscv) && !defined(CONFIG_RV64)
   difftest_query_u32_t get_abi_version =
       dlsym(handle, "difftest_get_abi_version");
   Assert(get_abi_version != NULL,
@@ -112,7 +97,6 @@ void init_difftest(char *ref_so_file, long img_size, int port) {
   Assert(state_size == sizeof(riscv32_difftest_state_t),
       "RV32 DiffTest state size mismatch: expected %u, got %u",
       (unsigned)sizeof(riscv32_difftest_state_t), state_size);
-#endif
 
   ref_difftest_memcpy = dlsym(handle, "difftest_memcpy");
   assert(ref_difftest_memcpy);

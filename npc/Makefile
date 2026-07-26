@@ -1,6 +1,6 @@
 VERILATOR := verilator
 BUILD_DIR := ./build
-VERILATOR_FLAGS := --trace-fst -cc --exe --build -j --top-module top --Mdir build -I$(abspath ./vsrc)
+VERILATOR_FLAGS := --trace-fst -cc --exe --build -j -Wall --top-module top --Mdir build -I$(abspath ./vsrc)
 # 每个传递给C编译器的参数前面都要加-CFLAGS
 CFLAGS := -CFLAGS -Wall -CFLAGS -Werror -CFLAGS -Wno-unused-function -CFLAGS -ggdb3
 # 每个传递给链接器的参数前面都要加-LDFLAGS
@@ -13,7 +13,6 @@ IMG := ./dummy.bin
 ARGS ?=
 ITRACE ?= 0
 FTRACE ?= 0
-MTRACE ?= 0
 
 ifeq ($(ITRACE),1)
 CFLAGS += -CFLAGS -DNPC_ITRACE=1
@@ -21,10 +20,6 @@ endif
 
 ifeq ($(FTRACE),1)
 CFLAGS += -CFLAGS -DNPC_FTRACE=1
-endif
-
-ifeq ($(MTRACE),1)
-CFLAGS += -CFLAGS -DNPC_MTRACE=1
 endif
 
 sim: $(BUILD_DIR)
