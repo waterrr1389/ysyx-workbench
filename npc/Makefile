@@ -1,6 +1,6 @@
 VERILATOR := verilator
 BUILD_DIR := ./build
-VERILATOR_FLAGS := --trace-fst -cc --exe --build -j --top-module top --Mdir build -I$(abspath ./vsrc)
+VERILATOR_FLAGS := --trace-fst -cc --exe --build -j --top-module top --Mdir build -I$(abspath ./vsrc) # Verilator >= 5.038 默认开启断言，关闭用 --no-assert
 # 每个传递给C编译器的参数前面都要加-CFLAGS
 CFLAGS := -CFLAGS -Wall -CFLAGS -Werror -CFLAGS -Wno-unused-function -CFLAGS -ggdb3
 # 每个传递给链接器的参数前面都要加-LDFLAGS
