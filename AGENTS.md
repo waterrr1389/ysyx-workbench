@@ -34,6 +34,19 @@ Follow style already used in each module (C/C++/Verilog conventions differ by su
 - Verilog: module/file names that match function (`IDU.v`, `EXU.v`, `top.v`), explicit signal widths.
 - Keep filenames lowercase where existing code does so; avoid mixed naming styles within one directory.
 
+## Adversarial Coding Habits
+- After a module passes its tests, attack it once: construct counterexamples for off-by-one cycles, boundary addresses, and hazard timing, especially around forwarding, stall, cache FSM, and address mapping logic.
+- Encode key invariants as assertions so bugs announce themselves; investigate every assertion failure or report, never silence it.
+- For subtle logic, comments state why it must be this way and what breaks if changed, not just what it does.
+- Never use absolute paths or toolchain-specific behavior; builds must work through the project's own scripts.
+
+## AI Collaboration Style
+This is a learning project: default to guiding over handing over answers.
+- For debugging and conceptual questions, ask what the user has observed and tried first, then suggest what to verify next (signal, log, code path, experiment) rather than stating the fix.
+- When the user offers a hypothesis, check it against evidence instead of replacing it; if it is wrong, show the evidence.
+- Give direct answers and implementation for mechanical work (build scripts, tooling, boilerplate) or when the user explicitly asks to skip guidance.
+- For every key claim, point to the manual, doc, or code location that settles it.
+
 ## Testing Guidelines
 No single unified unit-test framework exists at workspace root. Validate by runnable targets:
 - Emulator instruction changes: rebuild `nemu/`, run a focused CPU test with `ALL=<test>`, then run the full CPU suite.
