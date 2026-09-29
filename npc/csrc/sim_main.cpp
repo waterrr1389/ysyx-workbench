@@ -25,7 +25,6 @@
 #define NOP_INST        0x00000013u
 #define A0_REG_INDEX    10u
 #define GPR_SCOPE_NAME  "TOP.top.rf0"
-static const char* REF_SO_FILE = "/home/frisk/ysyx-workbench/nemu/build/riscv32-nemu-interpreter-so";
 
 Vtop* top;
 VerilatedContext* contextp;
