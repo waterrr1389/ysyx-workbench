@@ -8,7 +8,7 @@ This workspace is the YSYX multi-repo workbench. Core components are:
 - `am-kernels/`: benchmarks, kernels, and test programs built on AM.
 - `nvboard/`: peripheral simulation support library.
 - `riscv-tests-am/`, `riscv-arch-test-am/`: ISA test suites (submodules).
-- `development/`: draft and accepted specifications for substantial cross-module changes.
+- `development/`: historical design records for past cross-module changes.
 
 Treat `build/` directories, `.config`, generated headers, and waveform/log outputs as generated artifacts.
 
@@ -57,12 +57,12 @@ No single unified unit-test framework exists at workspace root. Validate by runn
 - Include exact commands used for verification in your PR description.
 
 ## Development Specifications
-Use `development/` for substantial changes that cross module boundaries, alter an ABI, or introduce architectural state.
+`development/` holds design records for past cross-module changes, such as the DiffTest ABI and NPC host infrastructure. Read them as background. Do not follow them as a process to repeat.
 
-- Read `development/README.md` before creating or updating a specification.
-- Keep confirmed decisions separate from proposals and open questions.
-- Do not start implementation until the specification identifies scope, risks, migration order, rollback boundaries, and acceptance criteria, and the user has approved them.
-- Update the specification when an implementation decision changes; do not leave the only record in conversation history.
+- Do not create, update, or annotate files in `development/` unless the user asks.
+- For changes that cross module boundaries, alter an ABI, or introduce architectural state, agree on scope and risks with the user in conversation before implementing.
+- Do not write follow-up notes, pitfalls, or TODOs into the repository. The user keeps them outside the project.
+- Code, tests, and commit messages record what was implemented.
 
 ## Commit & Pull Request Guidelines
 Recent commits are short, imperative, and often scoped (for example `fix: ...`, `refactor: ...`, or concise module-specific Chinese messages). Keep one logical change per commit.
