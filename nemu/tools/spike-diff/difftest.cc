@@ -108,7 +108,7 @@ __EXPORT uint32_t difftest_get_abi_version(void) {
 }
 
 __EXPORT uint32_t difftest_get_state_size(void) {
-  return sizeof(riscv32_difftest_state_t) + 4u;
+  return sizeof(riscv32_difftest_state_t);
 }
 
 __EXPORT void difftest_memcpy(paddr_t addr, void *buf, size_t n, bool direction) {
