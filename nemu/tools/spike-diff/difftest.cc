@@ -104,11 +104,11 @@ void sim_t::diff_memcpy(reg_t dest, void* src, size_t n) {
 extern "C" {
 
 __EXPORT uint32_t difftest_get_abi_version(void) {
-  return RISCV32_DIFFTEST_ABI_VERSION + 1u;
+  return RISCV32_DIFFTEST_ABI_VERSION;
 }
 
 __EXPORT uint32_t difftest_get_state_size(void) {
-  return sizeof(riscv32_difftest_state_t);
+  return sizeof(riscv32_difftest_state_t) + 4u;
 }
 
 __EXPORT void difftest_memcpy(paddr_t addr, void *buf, size_t n, bool direction) {
