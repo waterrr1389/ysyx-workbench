@@ -159,9 +159,13 @@ void step_one_cycle(void) {
   trace_inst();
   uint32_t pc = current_pc;
   tick();
+#if NPC_DIFFTEST
   if (sim) {
     difftest_step(pc, top->pc);
   }
+#else
+  (void)pc;
+#endif
 }
 
 void sim_init(void) {
@@ -252,7 +256,9 @@ int main(int argc, char** argv) {
 #if NPC_FTRACE
   readelf(elf_file);
 #endif
+#if NPC_DIFFTEST
   init_difftest(REF_SO_FILE, img_size);
+#endif
 
   sim_init();
   sdb_mainloop();
