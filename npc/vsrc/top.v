@@ -1,4 +1,3 @@
-`include "alu_ops.vh"
 `include "ctrl_defs.vh"
 
 module top(
@@ -158,6 +157,7 @@ module top(
         .mem_we(mem_we),
         .mem_size(mem_size),
         .mem_unsigned(mem_unsigned),
+        .inst_valid(inst_valid),
         .alu_result(alu_result),
         .branch_taken(branch_taken),
         .mem_addr(mem_addr),
@@ -172,14 +172,11 @@ module top(
         end
     end
 
-    // While inst_valid is low the IFU drives inst=0. The combinational read of
-    // mem_rdata and npc_trap() in EXU are not gated by inst_valid; they stay
-    // quiet only because IDU emits an all-zero control word for unknown opcodes.
-    // If that decode default ever changes, fail here instead of silently issuing
-    // a spurious device read or ending the simulation early.
+    // mem_rdata does not check inst_valid; it relies on IDU decoding the
+    // idle inst=0 to mem_en=0.
     always @(posedge clk) begin
         if (!reset && !inst_valid) begin
-            assert (!mem_en && sel != `ALU_EBREAK);
+            assert (!mem_en);
         end
     end
 
