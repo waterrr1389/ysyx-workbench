@@ -172,4 +172,12 @@ module top(
         end
     end
 
+    // mem_rdata does not check inst_valid; it relies on IDU decoding the
+    // idle inst=0 to mem_en=0.
+    always @(posedge clk) begin
+        if (!reset && !inst_valid) begin
+            assert (!mem_en);
+        end
+    end
+
 endmodule
