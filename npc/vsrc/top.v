@@ -11,6 +11,7 @@ module top(
     wire [31:0] pc_val, pc_next, pc_plus_4;
     wire pc_wen;
     wire [31:0] inst;
+    wire inst_valid;
 
     wire [31:0] rs1_data, rs2_data;
     wire [31:0] imm;
@@ -37,9 +38,10 @@ module top(
     wire mem_en, mem_we, mem_unsigned;
     wire [1:0] mem_size;
 
-    assign pc_wen = !reset;
+    // Architectural state <Mem, GPR, PC> changes only when inst_valid is high;
+    // in every other cycle the processor must hold still.
+    assign pc_wen = !reset && inst_valid;
     assign pc_plus_4 = pc_val + 32'd4;
-    assign inst = reset ? 32'h00000013 : pmem_read(pc_val);
     assign mem_rdata = (mem_en && !mem_we) ? pmem_read(mem_addr) : 32'b0;
     assign jump_target = {alu_result[31:1], 1'b0};
 
@@ -85,8 +87,16 @@ module top(
     );
     assign pc = pc_val;
 
+    IFU #(32) ifu (
+        .clk(clk),
+        .reset(reset),
+        .pc(pc_val),
+        .inst(inst),
+        .inst_valid(inst_valid)
+    );
+
     RegisterFile #(5, 32) rf0 (
-        .wen(reg_wen_wire),
+        .wen(reg_wen_wire && inst_valid),
         .clk(clk),
         .wdata(wb_data),
         .waddr(rd_addr),
@@ -147,6 +157,7 @@ module top(
         .mem_we(mem_we),
         .mem_size(mem_size),
         .mem_unsigned(mem_unsigned),
+        .inst_valid(inst_valid),
         .alu_result(alu_result),
         .branch_taken(branch_taken),
         .mem_addr(mem_addr),
@@ -156,7 +167,7 @@ module top(
     );
 
     always @(posedge clk) begin
-        if (!reset && mem_en && mem_we) begin
+        if (!reset && inst_valid && mem_en && mem_we) begin
             pmem_write(mem_addr, mem_wdata, {4'b0, mem_wmask});
         end
     end
