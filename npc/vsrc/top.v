@@ -39,7 +39,8 @@ module top(
     wire mem_en, mem_we, mem_unsigned;
     wire [1:0] mem_size;
 
-    // 状态 <Mem, GPR, PC> 只在 inst_valid 的拍更新，其余拍处理器保持不动
+    // Architectural state <Mem, GPR, PC> changes only when inst_valid is high;
+    // in every other cycle the processor must hold still.
     assign pc_wen = !reset && inst_valid;
     assign pc_plus_4 = pc_val + 32'd4;
     assign mem_rdata = (mem_en && !mem_we) ? pmem_read(mem_addr) : 32'b0;
@@ -171,9 +172,11 @@ module top(
         end
     end
 
-    // 无效拍 IFU 送出 inst=0，mem_rdata 的组合读和 EXU 里的 npc_trap() 没有被
-    // inst_valid 门控，只靠 IDU 对未知 opcode 给出全 0 控制字才不触发。
-    // 译码默认值一旦改动，这里先报错，而不是悄悄多读一次设备或提前结束仿真。
+    // While inst_valid is low the IFU drives inst=0. The combinational read of
+    // mem_rdata and npc_trap() in EXU are not gated by inst_valid; they stay
+    // quiet only because IDU emits an all-zero control word for unknown opcodes.
+    // If that decode default ever changes, fail here instead of silently issuing
+    // a spurious device read or ending the simulation early.
     always @(posedge clk) begin
         if (!reset && !inst_valid) begin
             assert (!mem_en && sel != `ALU_EBREAK);
