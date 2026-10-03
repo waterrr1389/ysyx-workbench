@@ -21,7 +21,7 @@
 #include "trace/ftrace.h"
 #include "trace/iRingBuffer.h"
 
-#define RESET_CYCLES    11
+#define RESET_CYCLES    5
 #define NOP_INST        0x00000013u
 #define A0_REG_INDEX    10u
 #define GPR_SCOPE_NAME  "TOP.top.rf0"
@@ -144,18 +144,21 @@ static void trace_inst() {
 #endif
 }
 
-static void step_and_dump_wave() {
-  top->eval();
+static void dump_wave() {
   contextp->timeInc(1);
   tfp->dump(contextp->time());
-  top->clk = !top->clk;
+}
+
+// One cycle = exactly one posedge; outputs are settled on return.
+static void tick() {
+  top->clk = 0; top->eval(); dump_wave();
+  top->clk = 1; top->eval(); dump_wave();
 }
 
 void step_one_cycle(void) {
   trace_inst();
   uint32_t pc = current_pc;
-  step_and_dump_wave();
-  step_and_dump_wave();
+  tick();
   if (sim) {
     difftest_step(pc, top->pc);
   }
@@ -182,9 +185,10 @@ void sim_init(void) {
   init_gpr_scope();
 
   for (int i = 0; i < RESET_CYCLES; i++) {
-    step_and_dump_wave();
+    tick();
   }
   top->reset = 0;
+  top->eval();
   current_pc = top->pc;
 
 #if NPC_ITRACE
