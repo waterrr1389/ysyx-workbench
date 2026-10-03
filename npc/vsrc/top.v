@@ -1,3 +1,4 @@
+`include "alu_ops.vh"
 `include "ctrl_defs.vh"
 
 module top(
@@ -11,6 +12,7 @@ module top(
     wire [31:0] pc_val, pc_next, pc_plus_4;
     wire pc_wen;
     wire [31:0] inst;
+    wire inst_valid;
 
     wire [31:0] rs1_data, rs2_data;
     wire [31:0] imm;
@@ -37,9 +39,9 @@ module top(
     wire mem_en, mem_we, mem_unsigned;
     wire [1:0] mem_size;
 
-    assign pc_wen = !reset;
+    // 状态 <Mem, GPR, PC> 只在 inst_valid 的拍更新，其余拍处理器保持不动
+    assign pc_wen = !reset && inst_valid;
     assign pc_plus_4 = pc_val + 32'd4;
-    assign inst = reset ? 32'h00000013 : pmem_read(pc_val);
     assign mem_rdata = (mem_en && !mem_we) ? pmem_read(mem_addr) : 32'b0;
     assign jump_target = {alu_result[31:1], 1'b0};
 
@@ -85,8 +87,16 @@ module top(
     );
     assign pc = pc_val;
 
+    IFU #(32) ifu (
+        .clk(clk),
+        .reset(reset),
+        .pc(pc_val),
+        .inst(inst),
+        .inst_valid(inst_valid)
+    );
+
     RegisterFile #(5, 32) rf0 (
-        .wen(reg_wen_wire),
+        .wen(reg_wen_wire && inst_valid),
         .clk(clk),
         .wdata(wb_data),
         .waddr(rd_addr),
@@ -156,8 +166,17 @@ module top(
     );
 
     always @(posedge clk) begin
-        if (!reset && mem_en && mem_we) begin
+        if (!reset && inst_valid && mem_en && mem_we) begin
             pmem_write(mem_addr, mem_wdata, {4'b0, mem_wmask});
+        end
+    end
+
+    // 无效拍 IFU 送出 inst=0，mem_rdata 的组合读和 EXU 里的 npc_trap() 没有被
+    // inst_valid 门控，只靠 IDU 对未知 opcode 给出全 0 控制字才不触发。
+    // 译码默认值一旦改动，这里先报错，而不是悄悄多读一次设备或提前结束仿真。
+    always @(posedge clk) begin
+        if (!reset && !inst_valid) begin
+            assert (!mem_en && sel != `ALU_EBREAK);
         end
     end
 
