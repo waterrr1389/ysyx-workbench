@@ -2,3 +2,6 @@
 instruction = false
 function = false
 memory = false
+
+[difftest]
+enable = false

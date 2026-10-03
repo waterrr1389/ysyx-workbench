@@ -8,10 +8,15 @@ import tempfile
 import tomllib
 
 
-TRACE_KEYS = {
-    "instruction": "NPC_ITRACE",
-    "function": "NPC_FTRACE",
-    "memory": "NPC_MTRACE",
+SECTIONS = {
+    "trace": {
+        "instruction": "NPC_ITRACE",
+        "function": "NPC_FTRACE",
+        "memory": "NPC_MTRACE",
+    },
+    "difftest": {
+        "enable": "NPC_DIFFTEST",
+    },
 }
 
 
@@ -22,45 +27,51 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_config(path: Path) -> dict[str, bool]:
+def load_section(config: dict, name: str) -> dict[str, bool]:
+    section = config.get(name)
+    if not isinstance(section, dict):
+        raise ValueError(f"missing [{name}] configuration section")
+
+    keys = SECTIONS[name]
+    unknown_keys = set(section) - set(keys)
+    if unknown_keys:
+        names = ", ".join(sorted(unknown_keys))
+        raise ValueError(f"unknown {name} option(s): {names}")
+
+    missing_keys = set(keys) - set(section)
+    if missing_keys:
+        names = ", ".join(sorted(missing_keys))
+        raise ValueError(f"missing {name} option(s): {names}")
+
+    for key, value in section.items():
+        if not isinstance(value, bool):
+            raise ValueError(f"{name}.{key} must be a boolean")
+
+    return section
+
+
+def load_config(path: Path) -> dict[str, dict[str, bool]]:
     with path.open("rb") as config_file:
         config = tomllib.load(config_file)
 
-    unknown_sections = set(config) - {"trace"}
+    unknown_sections = set(config) - set(SECTIONS)
     if unknown_sections:
         names = ", ".join(sorted(unknown_sections))
         raise ValueError(f"unknown configuration section(s): {names}")
 
-    trace = config.get("trace")
-    if not isinstance(trace, dict):
-        raise ValueError("missing [trace] configuration section")
-
-    unknown_keys = set(trace) - set(TRACE_KEYS)
-    if unknown_keys:
-        names = ", ".join(sorted(unknown_keys))
-        raise ValueError(f"unknown trace option(s): {names}")
-
-    missing_keys = set(TRACE_KEYS) - set(trace)
-    if missing_keys:
-        names = ", ".join(sorted(missing_keys))
-        raise ValueError(f"missing trace option(s): {names}")
-
-    for key, value in trace.items():
-        if not isinstance(value, bool):
-            raise ValueError(f"trace.{key} must be a boolean")
-
-    return trace
+    return {name: load_section(config, name) for name in SECTIONS}
 
 
-def render_header(trace: dict[str, bool], source: Path) -> str:
+def render_header(config: dict[str, dict[str, bool]], source: Path) -> str:
     lines = [
         "#pragma once",
         "",
         f"/* Generated from {source.as_posix()}. */",
         "",
     ]
-    for key, macro in TRACE_KEYS.items():
-        lines.append(f"#define {macro} {int(trace[key])}")
+    for name, keys in SECTIONS.items():
+        for key, macro in keys.items():
+            lines.append(f"#define {macro} {int(config[name][key])}")
     lines.extend(
         [
             "",
@@ -91,11 +102,11 @@ def update_if_changed(path: Path, content: str) -> None:
 def main() -> None:
     args = parse_args()
     try:
-        trace = load_config(args.input)
+        config = load_config(args.input)
     except (OSError, tomllib.TOMLDecodeError, ValueError) as error:
         print(f"configuration error: {error}", file=sys.stderr)
         raise SystemExit(2) from error
-    update_if_changed(args.output, render_header(trace, args.input))
+    update_if_changed(args.output, render_header(config, args.input))
     print(f"NPC configuration: {args.input}")
 
 
