@@ -1,7 +1,7 @@
 // SimpleBus slave backed by pmem. The access happens on the request
-// handshake edge; DELAY extra cycles are then spent in BUSY before the
-// response is offered.
-module SRAM #(DATA_LEN = 32, DELAY = 0) (
+// handshake edge; a random 0-7 extra cycles are then spent in BUSY before
+// the response is offered, to exercise the masters under arbitrary latency.
+module SRAM #(DATA_LEN = 32) (
     input clk,
     input reset,
 
@@ -26,7 +26,11 @@ module SRAM #(DATA_LEN = 32, DELAY = 0) (
     localparam [1:0] SRAM_RESP = 2'd2;
 
     reg [1:0] state, next_state;
-    reg [7:0] delay_cnt;
+    reg [2:0] delay_cnt;
+    /* verilator lint_off UNUSEDSIGNAL */
+    wire [7:0] lfsr_out;  // only the low bits pick the delay
+    /* verilator lint_on UNUSEDSIGNAL */
+    wire [2:0] delay = lfsr_out[2:0];
     // Selects the response channel; the rest of the request is consumed on
     // the handshake edge and need not be kept.
     reg resp_is_write;
@@ -37,7 +41,7 @@ module SRAM #(DATA_LEN = 32, DELAY = 0) (
     always @(*) begin
         case (state)
             SRAM_IDLE: next_state = !req_fire ? SRAM_IDLE :
-                                    DELAY == 0 ? SRAM_RESP : SRAM_BUSY;
+                                    delay == 0 ? SRAM_RESP : SRAM_BUSY;
             SRAM_BUSY: next_state = delay_cnt == 1 ? SRAM_RESP : SRAM_BUSY;
             SRAM_RESP: next_state = resp_fire ? SRAM_IDLE : SRAM_RESP;
             default:   next_state = SRAM_IDLE;
@@ -50,7 +54,7 @@ module SRAM #(DATA_LEN = 32, DELAY = 0) (
     end
 
     always @(posedge clk) begin
-        if (req_fire)                delay_cnt <= DELAY[7:0];
+        if (req_fire)                delay_cnt <= delay;
         else if (state == SRAM_BUSY) delay_cnt <= delay_cnt - 1;
     end
 
@@ -62,6 +66,12 @@ module SRAM #(DATA_LEN = 32, DELAY = 0) (
             else     rdata <= pmem_read(addr);
         end
     end
+
+    LFSR lfsr (
+        .clk(clk),
+        .reset(reset),
+        .out(lfsr_out)
+    );
 
     assign reqReady   = (state == SRAM_IDLE);
     assign rrespValid = (state == SRAM_RESP) && !resp_is_write;
