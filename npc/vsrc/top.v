@@ -5,13 +5,11 @@ module top(
     input reset,
     output [31:0] pc
 );
-    import "DPI-C" function int pmem_read(input int raddr);
-    import "DPI-C" function void pmem_write(input int waddr, input int wdata, input byte wmask);
-
     wire [31:0] pc_val, pc_next, pc_plus_4;
     wire pc_wen;
     wire [31:0] inst;
     wire inst_valid;
+    wire inst_done;
 
     wire [31:0] rs1_data, rs2_data;
     wire [31:0] imm;
@@ -38,11 +36,10 @@ module top(
     wire mem_en, mem_we, mem_unsigned;
     wire [1:0] mem_size;
 
-    // Architectural state <Mem, GPR, PC> changes only when inst_valid is high;
-    // in every other cycle the processor must hold still.
-    assign pc_wen = !reset && inst_valid;
+    // GPR and PC commit only when inst_done is high; Mem is written by the LSU
+    // once per instruction. In every other cycle the processor must hold still.
+    assign pc_wen = !reset && inst_done;
     assign pc_plus_4 = pc_val + 32'd4;
-    assign mem_rdata = (mem_en && !mem_we) ? pmem_read(mem_addr) : 32'b0;
     assign jump_target = {alu_result[31:1], 1'b0};
 
     MuxKeyWithDefault #(2, 1, 32) BranchNextMux (
@@ -91,12 +88,13 @@ module top(
         .clk(clk),
         .reset(reset),
         .pc(pc_val),
+        .inst_done(inst_done),
         .inst(inst),
         .inst_valid(inst_valid)
     );
 
     RegisterFile #(5, 32) rf0 (
-        .wen(reg_wen_wire && inst_valid),
+        .wen(reg_wen_wire && inst_done),
         .clk(clk),
         .wdata(wb_data),
         .waddr(rd_addr),
@@ -157,7 +155,7 @@ module top(
         .mem_we(mem_we),
         .mem_size(mem_size),
         .mem_unsigned(mem_unsigned),
-        .inst_valid(inst_valid),
+        .inst_done(inst_done),
         .alu_result(alu_result),
         .branch_taken(branch_taken),
         .mem_addr(mem_addr),
@@ -166,18 +164,17 @@ module top(
         .load_result(load_result)
     );
 
-    always @(posedge clk) begin
-        if (!reset && inst_valid && mem_en && mem_we) begin
-            pmem_write(mem_addr, mem_wdata, {4'b0, mem_wmask});
-        end
-    end
-
-    // mem_rdata does not check inst_valid; it relies on IDU decoding the
-    // idle inst=0 to mem_en=0.
-    always @(posedge clk) begin
-        if (!reset && !inst_valid) begin
-            assert (!mem_en);
-        end
-    end
+    LSU #(32) lsu (
+        .clk(clk),
+        .reset(reset),
+        .inst_valid(inst_valid),
+        .mem_en(mem_en),
+        .mem_we(mem_we),
+        .mem_addr(mem_addr),
+        .mem_wdata(mem_wdata),
+        .mem_wmask(mem_wmask),
+        .mem_rdata(mem_rdata),
+        .inst_done(inst_done)
+    );
 
 endmodule
