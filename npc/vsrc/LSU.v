@@ -10,14 +10,17 @@ module LSU #(DATA_LEN = 32) (
     output [DATA_LEN-1:0] mem_rdata,
     output inst_done,
 
-    output req_valid,
-    output [DATA_LEN-1:0] req_addr,
-    output req_wen,
-    output [DATA_LEN-1:0] req_wdata,
-    output [3:0] req_wmask,
-    input rvalid,
+    output reqValid,
+    input reqReady,
+    output [DATA_LEN-1:0] addr,
+    output wen,
+    output [DATA_LEN-1:0] wdata,
+    output [3:0] wmask,
+    input rrespValid,
+    output rrespReady,
     input [DATA_LEN-1:0] rdata,
-    input bvalid
+    input wrespValid,
+    output wrespReady
 );
 
     localparam [1:0] LSU_IDLE  = 2'd0;
@@ -27,15 +30,17 @@ module LSU #(DATA_LEN = 32) (
     reg [1:0] state, next_state;
 
     // Issue only from IDLE, so a request is sent once per instruction even
-    // though inst_valid stays high until inst_done.
-    assign req_valid = !reset && state == LSU_IDLE && inst_valid && mem_en;
+    // though inst_valid stays high until inst_done. While waiting for
+    // reqReady the request stays stable: the IFU holds the instruction and
+    // no state commits before inst_done.
+    assign reqValid = !reset && state == LSU_IDLE && inst_valid && mem_en;
 
     always @(*) begin
         case (state)
-            LSU_IDLE:  next_state = !req_valid ? LSU_IDLE :
-                                    mem_we     ? LSU_WWAIT : LSU_RWAIT;
-            LSU_RWAIT: next_state = rvalid ? LSU_IDLE : LSU_RWAIT;
-            LSU_WWAIT: next_state = bvalid ? LSU_IDLE : LSU_WWAIT;
+            LSU_IDLE:  next_state = !(reqValid && reqReady) ? LSU_IDLE :
+                                    mem_we ? LSU_WWAIT : LSU_RWAIT;
+            LSU_RWAIT: next_state = rrespValid ? LSU_IDLE : LSU_RWAIT;
+            LSU_WWAIT: next_state = wrespValid ? LSU_IDLE : LSU_WWAIT;
             default:   next_state = LSU_IDLE;
         endcase
     end
@@ -45,16 +50,18 @@ module LSU #(DATA_LEN = 32) (
         else       state <= next_state;
     end
 
-    assign req_addr  = mem_addr;
-    assign req_wen   = mem_we;
-    assign req_wdata = mem_wdata;
-    assign req_wmask = mem_wmask;
+    assign addr  = mem_addr;
+    assign wen   = mem_we;
+    assign wdata = mem_wdata;
+    assign wmask = mem_wmask;
+    assign rrespReady = (state == LSU_RWAIT);
+    assign wrespReady = (state == LSU_WWAIT);
 
-    // Not latched: load data is consumed in the rvalid cycle, which is also
-    // the commit cycle.
+    // Not latched: load data is consumed in the handshake cycle, which is
+    // also the commit cycle.
     assign mem_rdata = rdata;
 
     assign inst_done = (inst_valid && !mem_en)
-                    || (state == LSU_RWAIT && rvalid)
-                    || (state == LSU_WWAIT && bvalid);
+                    || (state == LSU_RWAIT && rrespValid)
+                    || (state == LSU_WWAIT && wrespValid);
 endmodule

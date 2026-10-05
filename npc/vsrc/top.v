@@ -11,19 +11,19 @@ module top(
     wire inst_valid;
     wire inst_done;
 
-    wire ifu_req_valid;
-    wire [31:0] ifu_req_addr;
-    wire ifu_rvalid;
+    wire ifu_reqValid, ifu_reqReady;
+    wire [31:0] ifu_addr;
+    wire ifu_rrespValid, ifu_rrespReady;
     wire [31:0] ifu_rdata;
 
-    wire lsu_req_valid;
-    wire [31:0] lsu_req_addr;
-    wire lsu_req_wen;
-    wire [31:0] lsu_req_wdata;
-    wire [3:0] lsu_req_wmask;
-    wire lsu_rvalid;
+    wire lsu_reqValid, lsu_reqReady;
+    wire [31:0] lsu_addr;
+    wire lsu_wen;
+    wire [31:0] lsu_wdata;
+    wire [3:0] lsu_wmask;
+    wire lsu_rrespValid, lsu_rrespReady;
     wire [31:0] lsu_rdata;
-    wire lsu_bvalid;
+    wire lsu_wrespValid, lsu_wrespReady;
 
     wire [31:0] rs1_data, rs2_data;
     wire [31:0] imm;
@@ -105,23 +105,28 @@ module top(
         .inst_done(inst_done),
         .inst(inst),
         .inst_valid(inst_valid),
-        .req_valid(ifu_req_valid),
-        .req_addr(ifu_req_addr),
-        .rvalid(ifu_rvalid),
+        .reqValid(ifu_reqValid),
+        .reqReady(ifu_reqReady),
+        .addr(ifu_addr),
+        .rrespValid(ifu_rrespValid),
+        .rrespReady(ifu_rrespReady),
         .rdata(ifu_rdata)
     );
 
     SRAM #(32) ifu_sram (
         .clk(clk),
         .reset(reset),
-        .req_valid(ifu_req_valid),
-        .req_addr(ifu_req_addr),
-        .req_wen(1'b0),
-        .req_wdata(32'b0),
-        .req_wmask(4'b0),
-        .rvalid(ifu_rvalid),
+        .reqValid(ifu_reqValid),
+        .reqReady(ifu_reqReady),
+        .addr(ifu_addr),
+        .wen(1'b0),
+        .wdata(32'b0),
+        .wmask(4'b0),
+        .rrespValid(ifu_rrespValid),
+        .rrespReady(ifu_rrespReady),
         .rdata(ifu_rdata),
-        .bvalid()
+        .wrespValid(),
+        .wrespReady(1'b0)
     );
 
     RegisterFile #(5, 32) rf0 (
@@ -206,27 +211,33 @@ module top(
         .mem_wmask(mem_wmask),
         .mem_rdata(mem_rdata),
         .inst_done(inst_done),
-        .req_valid(lsu_req_valid),
-        .req_addr(lsu_req_addr),
-        .req_wen(lsu_req_wen),
-        .req_wdata(lsu_req_wdata),
-        .req_wmask(lsu_req_wmask),
-        .rvalid(lsu_rvalid),
+        .reqValid(lsu_reqValid),
+        .reqReady(lsu_reqReady),
+        .addr(lsu_addr),
+        .wen(lsu_wen),
+        .wdata(lsu_wdata),
+        .wmask(lsu_wmask),
+        .rrespValid(lsu_rrespValid),
+        .rrespReady(lsu_rrespReady),
         .rdata(lsu_rdata),
-        .bvalid(lsu_bvalid)
+        .wrespValid(lsu_wrespValid),
+        .wrespReady(lsu_wrespReady)
     );
 
     SRAM #(32) lsu_sram (
         .clk(clk),
         .reset(reset),
-        .req_valid(lsu_req_valid),
-        .req_addr(lsu_req_addr),
-        .req_wen(lsu_req_wen),
-        .req_wdata(lsu_req_wdata),
-        .req_wmask(lsu_req_wmask),
-        .rvalid(lsu_rvalid),
+        .reqValid(lsu_reqValid),
+        .reqReady(lsu_reqReady),
+        .addr(lsu_addr),
+        .wen(lsu_wen),
+        .wdata(lsu_wdata),
+        .wmask(lsu_wmask),
+        .rrespValid(lsu_rrespValid),
+        .rrespReady(lsu_rrespReady),
         .rdata(lsu_rdata),
-        .bvalid(lsu_bvalid)
+        .wrespValid(lsu_wrespValid),
+        .wrespReady(lsu_wrespReady)
     );
 
 endmodule
