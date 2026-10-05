@@ -113,7 +113,7 @@ module top(
         .rdata(ifu_rdata)
     );
 
-    SRAM #(32) ifu_sram (
+    SRAM #(32, 1) ifu_sram (
         .clk(clk),
         .reset(reset),
         .reqValid(ifu_reqValid),
@@ -224,7 +224,7 @@ module top(
         .wrespReady(lsu_wrespReady)
     );
 
-    SRAM #(32) lsu_sram (
+    SRAM #(32, 1) lsu_sram (
         .clk(clk),
         .reset(reset),
         .reqValid(lsu_reqValid),
