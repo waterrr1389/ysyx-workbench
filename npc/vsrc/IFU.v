@@ -2,6 +2,7 @@ module IFU #(DATA_LEN = 32) (
     input clk,
     input reset,
     input [DATA_LEN-1:0] pc,
+    input inst_done,
     output [DATA_LEN-1:0] inst,
     output inst_valid
 );
@@ -17,7 +18,7 @@ module IFU #(DATA_LEN = 32) (
     always @(*) begin
         case (state)
             IFU_IDLE: next_state = IFU_WAIT;
-            IFU_WAIT: next_state = IFU_IDLE;
+            IFU_WAIT: next_state = inst_done ? IFU_IDLE : IFU_WAIT;
             default:  next_state = IFU_IDLE;
         endcase
     end
@@ -29,9 +30,11 @@ module IFU #(DATA_LEN = 32) (
 
     // Read only while issuing the request. Skipping reset matters: PC is not
     // reset until this same edge, so reading then would hit an out-of-pmem address.
+    // Hold inst until retire, then clear it so IDLE decodes to mem_en=0.
     always @(posedge clk) begin
-        if (!reset && state == IFU_IDLE) ifu_rdata <= pmem_read(pc);
-        else                             ifu_rdata <= 0;
+        if (!reset && state == IFU_IDLE)                    ifu_rdata <= pmem_read(pc);
+        else if (!reset && state == IFU_WAIT && !inst_done) ifu_rdata <= ifu_rdata;
+        else                                                ifu_rdata <= 0;
     end
 
     assign inst = ifu_rdata;

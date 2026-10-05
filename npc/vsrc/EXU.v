@@ -13,7 +13,7 @@ module EXU #(DATA_LEN = 1) (
     input mem_we,
     input [1:0] mem_size,
     input mem_unsigned,
-    input inst_valid,
+    input inst_done,
     output reg [DATA_LEN-1:0] alu_result,
     output reg branch_taken,
     output [DATA_LEN-1:0] mem_addr,
@@ -78,7 +78,7 @@ module EXU #(DATA_LEN = 1) (
                 alu_result = {{(DATA_LEN-1){1'b0}}, unsigned_lt};
             end
             `ALU_EBREAK: begin
-                if (inst_valid) npc_trap();
+                if (inst_done) npc_trap();
             end
             default: begin
                 alu_result = {DATA_LEN{1'b0}};
