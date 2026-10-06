@@ -31,6 +31,10 @@ $(CONFIG_HEADER): $(CONFIG) $(CONFIG_GENERATOR)
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 	
+# Style checks off by default in sim; run on demand to catch unused or undriven signals
+lint:
+	$(VERILATOR) --lint-only -Wall -Wno-PINCONNECTEMPTY --top-module top -I$(abspath ./vsrc) $(VSRCS)
+
 wave:
 	gtkwave waveform.fst
 
@@ -40,7 +44,7 @@ run:
 gdb:
 	gdb $(BUILD_DIR)/Vtop
 
-.PHONY:  sim run clean wave
+.PHONY:  sim run clean wave lint
 
 clean: 
 	@rm -rf $(BUILD_DIR)

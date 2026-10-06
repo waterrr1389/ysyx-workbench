@@ -1,79 +1,56 @@
-// SimpleBus slave backed by pmem. The access happens on the request
-// handshake edge; a random 0-7 extra cycles are then spent in BUSY before
-// the response is offered, to exercise the masters under arbitrary latency.
 module SRAM #(DATA_LEN = 32) (
     input clk,
     input reset,
 
-    input reqValid,
-    output reqReady,
-    input [DATA_LEN-1:0] addr,
-    input wen,
-    input [DATA_LEN-1:0] wdata,
-    input [3:0] wmask,
-    output rrespValid,
-    input rrespReady,
+    input arvalid,
+    output arready,
+    input [DATA_LEN-1:0] araddr,
+
+    output rvalid,
+    input rready,
     output reg [DATA_LEN-1:0] rdata,
-    output wrespValid,
-    input wrespReady
+    output [1:0] rresp,
+
+    input awvalid,
+    output awready,
+    input [DATA_LEN-1:0] awaddr,
+
+    input wvalid,
+    output wready,
+    input [DATA_LEN-1:0] wdata,
+    input [3:0] wstrb,
+
+    output bvalid,
+    input bready,
+    output [1:0] bresp
 );
 
     import "DPI-C" function int pmem_read(input int raddr);
     import "DPI-C" function void pmem_write(input int waddr, input int wdata, input byte wmask);
 
-    localparam [1:0] SRAM_IDLE = 2'd0;
-    localparam [1:0] SRAM_BUSY = 2'd1;
-    localparam [1:0] SRAM_RESP = 2'd2;
+    localparam [2:0] SRAM_IDLE = 3'd0;
+    localparam [2:0] SRAM_AW   = 3'd1;  // AW received, waiting for W
+    localparam [2:0] SRAM_W    = 3'd2;  // W received, waiting for AW
+    localparam [2:0] SRAM_R    = 3'd3;
+    localparam [2:0] SRAM_B    = 3'd4;
 
-    reg [1:0] state, next_state;
-    reg [2:0] delay_cnt;
-    /* verilator lint_off UNUSEDSIGNAL */
-    wire [7:0] lfsr_out;  // only the low bits pick the delay
-    /* verilator lint_on UNUSEDSIGNAL */
-    wire [2:0] delay = lfsr_out[2:0];
-    // Selects the response channel; the rest of the request is consumed on
-    // the handshake edge and need not be kept.
-    reg resp_is_write;
+    reg [2:0] state, next_state;
 
-    wire req_fire  = !reset && reqValid && reqReady;
-    wire resp_fire = resp_is_write ? wrespReady : rrespReady;
+    reg [DATA_LEN-1:0] awaddr_q;
+    reg [DATA_LEN-1:0] wdata_q;
+    reg [3:0] wstrb_q;
 
-    always @(*) begin
-        case (state)
-            SRAM_IDLE: next_state = !req_fire ? SRAM_IDLE :
-                                    delay == 0 ? SRAM_RESP : SRAM_BUSY;
-            SRAM_BUSY: next_state = delay_cnt == 1 ? SRAM_RESP : SRAM_BUSY;
-            SRAM_RESP: next_state = resp_fire ? SRAM_IDLE : SRAM_RESP;
-            default:   next_state = SRAM_IDLE;
-        endcase
-    end
+    wire ar_fire = arvalid && arready;
+    wire r_fire  = rvalid && rready;
+    wire aw_fire = awvalid && awready;
+    wire w_fire  = wvalid && wready;
+    wire b_fire  = bvalid && bready;
 
     always @(posedge clk) begin
         if (reset) state <= SRAM_IDLE;
         else       state <= next_state;
     end
 
-    always @(posedge clk) begin
-        if (req_fire)                delay_cnt <= delay;
-        else if (state == SRAM_BUSY) delay_cnt <= delay_cnt - 1;
-    end
-
-    // rdata must stay stable through RESP until rrespReady.
-    always @(posedge clk) begin
-        if (req_fire) begin
-            resp_is_write <= wen;
-            if (wen) pmem_write(addr, wdata, {4'b0, wmask});
-            else     rdata <= pmem_read(addr);
-        end
-    end
-
-    LFSR lfsr (
-        .clk(clk),
-        .reset(reset),
-        .out(lfsr_out)
-    );
-
-    assign reqReady   = (state == SRAM_IDLE);
-    assign rrespValid = (state == SRAM_RESP) && !resp_is_write;
-    assign wrespValid = (state == SRAM_RESP) && resp_is_write;
+    assign rresp = 2'b00;  // OKAY
+    assign bresp = 2'b00;  // OKAY
 endmodule

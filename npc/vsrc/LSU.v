@@ -10,36 +10,54 @@ module LSU #(DATA_LEN = 32) (
     output [DATA_LEN-1:0] mem_rdata,
     output inst_done,
 
-    output reqValid,
-    input reqReady,
-    output [DATA_LEN-1:0] addr,
-    output wen,
-    output [DATA_LEN-1:0] wdata,
-    output [3:0] wmask,
-    input rrespValid,
-    output rrespReady,
+    output arvalid,
+    input arready,
+    output [DATA_LEN-1:0] araddr,
+
+    input rvalid,
+    output rready,
     input [DATA_LEN-1:0] rdata,
-    input wrespValid,
-    output wrespReady
+    input [1:0] rresp,
+
+    output awvalid,
+    input awready,
+    output [DATA_LEN-1:0] awaddr,
+
+    output wvalid,
+    input wready,
+    output [DATA_LEN-1:0] wdata,
+    output [3:0] wstrb,
+
+    input bvalid,
+    output bready,
+    input [1:0] bresp
 );
 
-    localparam [1:0] LSU_IDLE  = 2'd0;
-    localparam [1:0] LSU_RWAIT = 2'd1;
-    localparam [1:0] LSU_WWAIT = 2'd2;
+    localparam [2:0] LSU_IDLE = 3'd0;
+    localparam [2:0] LSU_AW_W = 3'd1;  // both AW and W pending
+    localparam [2:0] LSU_AW   = 3'd2;  // W done, AW pending
+    localparam [2:0] LSU_W    = 3'd3;  // AW done, W pending
+    localparam [2:0] LSU_B    = 3'd4;
+    localparam [2:0] LSU_AR   = 3'd5;
+    localparam [2:0] LSU_R    = 3'd6;
 
-    reg [1:0] state, next_state;
+    reg [2:0] state, next_state;
     /* verilator lint_off UNUSEDSIGNAL */
-    wire [7:0] lfsr_out;  // only the low bits pick the delay
+    wire [7:0] lfsr_out;
     /* verilator lint_on UNUSEDSIGNAL */
-    // Random 0-7 cycles before reqValid rises, to exercise the slave under
-    // arbitrary request timing. Once raised, reqValid holds until handshake.
+    // Random issue delay exercises the slave.
     reg [2:0] req_delay;
 
-    // Issue only from IDLE, so a request is sent once per instruction even
-    // though inst_valid stays high until inst_done. While waiting for
-    // reqReady the request stays stable: the IFU holds the instruction and
-    // no state commits before inst_done.
-    assign reqValid = !reset && state == LSU_IDLE && inst_valid && mem_en && req_delay == 0;
+    wire ar_fire = arvalid && arready;
+    wire r_fire  = rvalid && rready;
+    wire aw_fire = awvalid && awready;
+    wire w_fire  = wvalid && wready;
+    wire b_fire  = bvalid && bready;
+
+    always @(posedge clk) begin
+        if (reset) state <= LSU_IDLE;
+        else       state <= next_state;
+    end
 
     // Reload per instruction; count down only while a memory access is pending.
     always @(posedge clk) begin
@@ -54,34 +72,4 @@ module LSU #(DATA_LEN = 32) (
         .reset(reset),
         .out(lfsr_out)
     );
-
-    always @(*) begin
-        case (state)
-            LSU_IDLE:  next_state = !(reqValid && reqReady) ? LSU_IDLE :
-                                    mem_we ? LSU_WWAIT : LSU_RWAIT;
-            LSU_RWAIT: next_state = rrespValid ? LSU_IDLE : LSU_RWAIT;
-            LSU_WWAIT: next_state = wrespValid ? LSU_IDLE : LSU_WWAIT;
-            default:   next_state = LSU_IDLE;
-        endcase
-    end
-
-    always @(posedge clk) begin
-        if (reset) state <= LSU_IDLE;
-        else       state <= next_state;
-    end
-
-    assign addr  = mem_addr;
-    assign wen   = mem_we;
-    assign wdata = mem_wdata;
-    assign wmask = mem_wmask;
-    assign rrespReady = (state == LSU_RWAIT);
-    assign wrespReady = (state == LSU_WWAIT);
-
-    // Not latched: load data is consumed in the handshake cycle, which is
-    // also the commit cycle.
-    assign mem_rdata = rdata;
-
-    assign inst_done = (inst_valid && !mem_en)
-                    || (state == LSU_RWAIT && rrespValid)
-                    || (state == LSU_WWAIT && wrespValid);
 endmodule

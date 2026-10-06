@@ -11,19 +11,24 @@ module top(
     wire inst_valid;
     wire inst_done;
 
-    wire ifu_reqValid, ifu_reqReady;
-    wire [31:0] ifu_addr;
-    wire ifu_rrespValid, ifu_rrespReady;
+    wire ifu_arvalid, ifu_arready;
+    wire [31:0] ifu_araddr;
+    wire ifu_rvalid, ifu_rready;
     wire [31:0] ifu_rdata;
+    wire [1:0] ifu_rresp;
 
-    wire lsu_reqValid, lsu_reqReady;
-    wire [31:0] lsu_addr;
-    wire lsu_wen;
-    wire [31:0] lsu_wdata;
-    wire [3:0] lsu_wmask;
-    wire lsu_rrespValid, lsu_rrespReady;
+    wire lsu_arvalid, lsu_arready;
+    wire [31:0] lsu_araddr;
+    wire lsu_rvalid, lsu_rready;
     wire [31:0] lsu_rdata;
-    wire lsu_wrespValid, lsu_wrespReady;
+    wire [1:0] lsu_rresp;
+    wire lsu_awvalid, lsu_awready;
+    wire [31:0] lsu_awaddr;
+    wire lsu_wvalid, lsu_wready;
+    wire [31:0] lsu_wdata;
+    wire [3:0] lsu_wstrb;
+    wire lsu_bvalid, lsu_bready;
+    wire [1:0] lsu_bresp;
 
     wire [31:0] rs1_data, rs2_data;
     wire [31:0] imm;
@@ -105,28 +110,35 @@ module top(
         .inst_done(inst_done),
         .inst(inst),
         .inst_valid(inst_valid),
-        .reqValid(ifu_reqValid),
-        .reqReady(ifu_reqReady),
-        .addr(ifu_addr),
-        .rrespValid(ifu_rrespValid),
-        .rrespReady(ifu_rrespReady),
-        .rdata(ifu_rdata)
+        .arvalid(ifu_arvalid),
+        .arready(ifu_arready),
+        .araddr(ifu_araddr),
+        .rvalid(ifu_rvalid),
+        .rready(ifu_rready),
+        .rdata(ifu_rdata),
+        .rresp(ifu_rresp)
     );
 
     SRAM #(32) ifu_sram (
         .clk(clk),
         .reset(reset),
-        .reqValid(ifu_reqValid),
-        .reqReady(ifu_reqReady),
-        .addr(ifu_addr),
-        .wen(1'b0),
-        .wdata(32'b0),
-        .wmask(4'b0),
-        .rrespValid(ifu_rrespValid),
-        .rrespReady(ifu_rrespReady),
+        .arvalid(ifu_arvalid),
+        .arready(ifu_arready),
+        .araddr(ifu_araddr),
+        .rvalid(ifu_rvalid),
+        .rready(ifu_rready),
         .rdata(ifu_rdata),
-        .wrespValid(),
-        .wrespReady(1'b0)
+        .rresp(ifu_rresp),
+        .awvalid(1'b0),
+        .awready(),
+        .awaddr(32'b0),
+        .wvalid(1'b0),
+        .wready(),
+        .wdata(32'b0),
+        .wstrb(4'b0),
+        .bvalid(),
+        .bready(1'b0),
+        .bresp()
     );
 
     RegisterFile #(5, 32) rf0 (
@@ -211,33 +223,45 @@ module top(
         .mem_wmask(mem_wmask),
         .mem_rdata(mem_rdata),
         .inst_done(inst_done),
-        .reqValid(lsu_reqValid),
-        .reqReady(lsu_reqReady),
-        .addr(lsu_addr),
-        .wen(lsu_wen),
-        .wdata(lsu_wdata),
-        .wmask(lsu_wmask),
-        .rrespValid(lsu_rrespValid),
-        .rrespReady(lsu_rrespReady),
+        .arvalid(lsu_arvalid),
+        .arready(lsu_arready),
+        .araddr(lsu_araddr),
+        .rvalid(lsu_rvalid),
+        .rready(lsu_rready),
         .rdata(lsu_rdata),
-        .wrespValid(lsu_wrespValid),
-        .wrespReady(lsu_wrespReady)
+        .rresp(lsu_rresp),
+        .awvalid(lsu_awvalid),
+        .awready(lsu_awready),
+        .awaddr(lsu_awaddr),
+        .wvalid(lsu_wvalid),
+        .wready(lsu_wready),
+        .wdata(lsu_wdata),
+        .wstrb(lsu_wstrb),
+        .bvalid(lsu_bvalid),
+        .bready(lsu_bready),
+        .bresp(lsu_bresp)
     );
 
     SRAM #(32) lsu_sram (
         .clk(clk),
         .reset(reset),
-        .reqValid(lsu_reqValid),
-        .reqReady(lsu_reqReady),
-        .addr(lsu_addr),
-        .wen(lsu_wen),
-        .wdata(lsu_wdata),
-        .wmask(lsu_wmask),
-        .rrespValid(lsu_rrespValid),
-        .rrespReady(lsu_rrespReady),
+        .arvalid(lsu_arvalid),
+        .arready(lsu_arready),
+        .araddr(lsu_araddr),
+        .rvalid(lsu_rvalid),
+        .rready(lsu_rready),
         .rdata(lsu_rdata),
-        .wrespValid(lsu_wrespValid),
-        .wrespReady(lsu_wrespReady)
+        .rresp(lsu_rresp),
+        .awvalid(lsu_awvalid),
+        .awready(lsu_awready),
+        .awaddr(lsu_awaddr),
+        .wvalid(lsu_wvalid),
+        .wready(lsu_wready),
+        .wdata(lsu_wdata),
+        .wstrb(lsu_wstrb),
+        .bvalid(lsu_bvalid),
+        .bready(lsu_bready),
+        .bresp(lsu_bresp)
     );
 
 endmodule

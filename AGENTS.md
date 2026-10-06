@@ -41,11 +41,15 @@ Follow style already used in each module (C/C++/Verilog conventions differ by su
 - Never use absolute paths or toolchain-specific behavior; builds must work through the project's own scripts.
 
 ## AI Collaboration Style
-This is a learning project: default to guiding over handing over answers.
-- For debugging and conceptual questions, ask what the user has observed and tried first, then suggest what to verify next (signal, log, code path, experiment) rather than stating the fix.
-- When the user offers a hypothesis, check it against evidence instead of replacing it; if it is wrong, show the evidence.
-- Give direct answers and implementation for mechanical work (build scripts, tooling, boilerplate) or when the user explicitly asks to skip guidance.
-- For every key claim, point to the manual, doc, or code location that settles it.
+This is a learning project. What the user owns is the design and the debugging of their own RTL; everything else is support.
+
+- Design is the user's: module boundaries, state machines, timing decisions. Do not decide these silently.
+- Facts are answered directly: tool behavior, spec and manual content, conventions such as port names, build scripts, test harnesses, environment setup. If something can be settled by reading code, running a command or a small experiment, do it and report the result instead of asking the user to.
+- When the user explicitly asks for complete code, give it, and first list in a line or two which design decisions it makes.
+- Debugging the user's RTL: give the evidence and the next narrowing step; let the user name the root cause.
+- Ask only questions whose answer changes the next step and cannot be found by looking. No hypothetical concerns that do not apply to the current code, no closing quiz questions.
+- When the user offers a judgment, check it against evidence and say plainly whether it holds.
+- Keep replies brief.
 
 ## Testing Guidelines
 No single unified unit-test framework exists at workspace root. Validate by runnable targets:

@@ -6,47 +6,35 @@ module IFU #(DATA_LEN = 32) (
     output [DATA_LEN-1:0] inst,
     output inst_valid,
 
-    output reqValid,
-    input reqReady,
-    output [DATA_LEN-1:0] addr,
-    input rrespValid,
-    output rrespReady,
-    input [DATA_LEN-1:0] rdata
+    output arvalid,
+    input arready,
+    output [DATA_LEN-1:0] araddr,
+
+    input rvalid,
+    output rready,
+    input [DATA_LEN-1:0] rdata,
+    input [1:0] rresp
 );
 
     localparam [1:0] IFU_IDLE = 2'd0;
-    localparam [1:0] IFU_WAIT = 2'd1;
-    localparam [1:0] IFU_HOLD = 2'd2;
+    localparam [1:0] IFU_AR   = 2'd1;
+    localparam [1:0] IFU_R    = 2'd2;
+    localparam [1:0] IFU_HOLD = 2'd3;
 
     reg [1:0] state, next_state;
     reg [DATA_LEN-1:0] ifu_rdata;
     /* verilator lint_off UNUSEDSIGNAL */
-    wire [7:0] lfsr_out;  // only the low bits pick the delay
+    wire [7:0] lfsr_out;
     /* verilator lint_on UNUSEDSIGNAL */
-    // Random 0-7 cycles before reqValid rises, to exercise the slave under
-    // arbitrary request timing. Once raised, reqValid holds until handshake.
+    // Random issue delay exercises the slave.
     reg [2:0] req_delay;
 
-    always @(*) begin
-        case (state)
-            IFU_IDLE: next_state = (reqValid && reqReady) ? IFU_WAIT : IFU_IDLE;
-            IFU_WAIT: next_state = rrespValid ? IFU_HOLD : IFU_WAIT;
-            IFU_HOLD: next_state = inst_done ? IFU_IDLE : IFU_HOLD;
-            default:  next_state = IFU_IDLE;
-        endcase
-    end
+    wire ar_fire = arvalid && arready;
+    wire r_fire  = rvalid && rready;
 
     always @(posedge clk) begin
         if (reset) state <= IFU_IDLE;
         else       state <= next_state;
-    end
-
-    // rdata is only valid in the handshake cycle, so latch it there and hold
-    // it through HOLD. Clear on retire so IDLE and WAIT decode to mem_en=0.
-    always @(posedge clk) begin
-        if (reset)                               ifu_rdata <= 0;
-        else if (state == IFU_WAIT && rrespValid) ifu_rdata <= rdata;
-        else if (state == IFU_HOLD && inst_done)  ifu_rdata <= 0;
     end
 
     always @(posedge clk) begin
@@ -61,13 +49,5 @@ module IFU #(DATA_LEN = 32) (
         .out(lfsr_out)
     );
 
-    // No request during reset: PC is not reset until the same edge, so its
-    // value would point outside pmem. While waiting for reqReady the request
-    // stays stable: PC only changes on inst_done, which cannot happen in IDLE.
-    assign reqValid = !reset && state == IFU_IDLE && req_delay == 0;
-    assign addr = pc;
-    assign rrespReady = (state == IFU_WAIT);
-
     assign inst = ifu_rdata;
-    assign inst_valid = (state == IFU_HOLD);
 endmodule
