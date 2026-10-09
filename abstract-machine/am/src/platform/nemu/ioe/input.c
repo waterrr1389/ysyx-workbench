@@ -5,7 +5,7 @@
 
 void __am_input_keybrd(AM_INPUT_KEYBRD_T *kbd) {
   uint32_t key = inb(KBD_ADDR);
-  if (key & 0x8000) {
+  if (key & 0x8000u) {
     kbd->keydown = false;
     key &= ~0x8000u;
   } else {
