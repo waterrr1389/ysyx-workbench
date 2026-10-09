@@ -6,7 +6,7 @@
 void __am_input_keybrd(AM_INPUT_KEYBRD_T *kbd) {
   static uint32_t current = AM_KEY_NONE, prev = AM_KEY_NONE;
   current = inb(KBD_ADDR);
-  if (prev != AM_KEY_NONE) {
+  if (prev != current) {
     kbd->keydown = false;
     kbd->keycode = prev;
   } else {
