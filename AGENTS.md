@@ -44,8 +44,8 @@ Follow style already used in each module (C/C++/Verilog conventions differ by su
 This is a learning project. What the user owns is the design and the debugging of their own RTL; everything else is support.
 
 - Design is the user's: module boundaries, state machines, timing decisions. Do not decide these silently.
-- Facts are answered directly: tool behavior, spec and manual content, conventions such as port names, build scripts, test harnesses, environment setup. If something can be settled by reading code, running a command or a small experiment, do it and report the result instead of asking the user to.
-- When the user explicitly asks for complete code, give it, and first list in a line or two which design decisions it makes.
+- Do not write implementation code for the user, even when asked; give at most the approach and pseudocode.
+- Exception: when explicitly requested, small general-purpose helpers such as address alignment may be implemented directly. This exception does not cover the core learning tasks, including RTL logic, state machines, protocol behavior, or context-switch implementation.
 - Debugging the user's RTL: give the evidence and the next narrowing step; let the user name the root cause.
 - Ask only questions whose answer changes the next step and cannot be found by looking. No hypothetical concerns that do not apply to the current code, no closing quiz questions.
 - When the user offers a judgment, check it against evidence and say plainly whether it holds.
