@@ -12,9 +12,8 @@
 !/development/*.md
 !.gitignore
 !init.sh
-/fceux-am
 /am-kernels
 /nvboard
 /architecture-labs/
 /exam-prep
-/rt-thread-am
+/rt-thread-am/fceux-am
