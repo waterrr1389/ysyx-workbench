@@ -33,10 +33,19 @@ void *malloc(size_t size) {
   // On native, malloc() will be called during initializaion of C runtime.
   // Therefore do not call panic() here, else it will yield a dead recursion:
   //   panic() -> putchar() -> (glibc) -> malloc() -> panic()
-#if !(defined(__ISA_NATIVE__) && defined(__NATIVE_USE_KLIB__))
-  panic("Not implemented");
-#endif
-  return NULL;
+  // Bump allocator: nothing is ever freed. Every block is aligned to
+  // max_align_t, which suits any object type that fits in it.
+  static char *addr = NULL;
+  if (addr == NULL) addr = (char *)ROUNDUP(heap.start, _Alignof(max_align_t));
+  // Check before rounding: ROUNDUP wraps to 0 for sizes near SIZE_MAX.
+  size_t avail = (char *)heap.end - addr;
+  if (size > avail) return NULL;
+  // size 0 still takes a slot so the returned pointer stays unique.
+  size = ROUNDUP(size == 0 ? 1 : size, _Alignof(max_align_t));
+  if (size > avail) return NULL;
+  void *ret = addr;
+  addr += size;
+  return ret;
 }
 
 void free(void *ptr) {
