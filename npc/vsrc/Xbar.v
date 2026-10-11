@@ -1,6 +1,7 @@
 // AXI4-Lite crossbar from one master port to the SRAM and the UART, chosen by
-// address. Unmapped addresses, and reads of the write-only UART, are answered
-// here with DECERR.
+// address. Reads of the RTC also go to the SRAM port, where the simulation
+// answers them through pmem_read. Unmapped addresses, and reads of the
+// write-only UART, are answered here with DECERR.
 //
 // One transaction at a time, which the Arbiter guarantees: IDLE holds every
 // READY low until a request arrives, the decoded route is latched on that
@@ -72,6 +73,8 @@ module Xbar (
     localparam [31:0] SRAM_SIZE = 32'h0200_0000;
     localparam [31:0] UART_BASE = 32'h1000_0000;
     localparam [31:0] UART_SIZE = 32'h0000_0008;
+    localparam [31:0] RTC_BASE  = 32'ha000_0048;
+    localparam [31:0] RTC_SIZE  = 32'h0000_0008;
 
     localparam [1:0] XBAR_IDLE  = 2'd0;
     localparam [1:0] XBAR_READ  = 2'd1;
@@ -90,10 +93,11 @@ module Xbar (
     reg err_resp;
 
     wire in_sram = araddr - SRAM_BASE < SRAM_SIZE;
+    wire in_rtc = araddr - RTC_BASE < RTC_SIZE;
     wire aw_in_sram = awaddr - SRAM_BASE < SRAM_SIZE;
     wire aw_in_uart = awaddr - UART_BASE < UART_SIZE;
 
-    wire [1:0] read_route  = in_sram ? ROUTE_SRAM : ROUTE_ERR;
+    wire [1:0] read_route  = in_sram || in_rtc ? ROUTE_SRAM : ROUTE_ERR;
     wire [1:0] write_route = aw_in_sram ? ROUTE_SRAM :
                              aw_in_uart ? ROUTE_UART : ROUTE_ERR;
 
