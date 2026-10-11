@@ -3,7 +3,10 @@
 module top(
     input clk,
     input reset,
-    output [31:0] pc
+    output [31:0] pc,
+    // High in the cycle whose clock edge commits the instruction at pc.
+    // The harness steps DiffTest and the tracers on it, once per instruction.
+    output commit
 );
     wire [31:0] pc_val, pc_next, pc_plus_4;
     wire pc_wen;
@@ -115,6 +118,7 @@ module top(
         .wen(pc_wen)
     );
     assign pc = pc_val;
+    assign commit = pc_wen;
 
     IFU #(32) ifu (
         .clk(clk),
