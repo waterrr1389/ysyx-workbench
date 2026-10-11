@@ -154,12 +154,10 @@ static void tick() {
   top->clk = 1; top->eval(); dump_wave();
 }
 
-// An instruction spans several cycles. Tracers and DiffTest observe
-// architectural state, so they run only on the edge that commits it.
+// Trace and diff only on cycles that commit an instruction.
 bool step_one_cycle(void) {
-  // PC changes only at commit, so this is the instruction in flight.
   current_pc = top->pc;
-  // Sampled before the edge: commit is combinational and drops after it.
+  // Read before the clock edge; commit goes low after it.
   bool commit = top->commit;
   if (commit) {
     trace_inst();
