@@ -144,8 +144,8 @@ static void trace_inst() {
 }
 
 static void dump_wave() {
-  contextp->timeInc(1);
-  tfp->dump(contextp->time());
+  // contextp->timeInc(1);
+  // tfp->dump(contextp->time());
 }
 
 // One cycle = exactly one posedge; outputs are settled on return.
