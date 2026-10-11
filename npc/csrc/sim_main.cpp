@@ -166,7 +166,7 @@ bool step_one_cycle(void) {
   }
   tick();
 #if NPC_DIFFTEST
-  if (commit && sim) {
+  if (sim) {
     difftest_step(current_pc, top->pc);
   }
 #endif
