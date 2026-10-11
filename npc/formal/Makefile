@@ -1,9 +1,9 @@
 # AXI4-Lite formal checks of the memory path, run with SymbiYosys.
-# Usage: make -C npc/formal [sram|arbiter|ifu|lsu]  (default: all four)
+# Usage: make -C npc/formal [sram|arbiter|ifu|lsu|uart]  (default: all five)
 # Needs sby, yosys, yices and sv2v.
 # Each job runs its bmc, cover and prove tasks; add TASKS=prove to pick some.
 BUILD_DIR := build
-JOBS := sram arbiter ifu lsu
+JOBS := sram arbiter ifu lsu uart
 TASKS ?=
 
 all: $(JOBS)
