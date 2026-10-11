@@ -11,19 +11,37 @@ module top(
     wire inst_valid;
     wire inst_done;
 
-    wire ifu_reqValid, ifu_reqReady;
-    wire [31:0] ifu_addr;
-    wire ifu_rrespValid, ifu_rrespReady;
+    wire ifu_arvalid, ifu_arready;
+    wire [31:0] ifu_araddr;
+    wire ifu_rvalid, ifu_rready;
     wire [31:0] ifu_rdata;
+    wire [1:0] ifu_rresp;
 
-    wire lsu_reqValid, lsu_reqReady;
-    wire [31:0] lsu_addr;
-    wire lsu_wen;
-    wire [31:0] lsu_wdata;
-    wire [3:0] lsu_wmask;
-    wire lsu_rrespValid, lsu_rrespReady;
+    wire lsu_arvalid, lsu_arready;
+    wire [31:0] lsu_araddr;
+    wire lsu_rvalid, lsu_rready;
     wire [31:0] lsu_rdata;
-    wire lsu_wrespValid, lsu_wrespReady;
+    wire [1:0] lsu_rresp;
+    wire lsu_awvalid, lsu_awready;
+    wire [31:0] lsu_awaddr;
+    wire lsu_wvalid, lsu_wready;
+    wire [31:0] lsu_wdata;
+    wire [3:0] lsu_wstrb;
+    wire lsu_bvalid, lsu_bready;
+    wire [1:0] lsu_bresp;
+
+    wire sram_arvalid, sram_arready;
+    wire [31:0] sram_araddr;
+    wire sram_rvalid, sram_rready;
+    wire [31:0] sram_rdata;
+    wire [1:0] sram_rresp;
+    wire sram_awvalid, sram_awready;
+    wire [31:0] sram_awaddr;
+    wire sram_wvalid, sram_wready;
+    wire [31:0] sram_wdata;
+    wire [3:0] sram_wstrb;
+    wire sram_bvalid, sram_bready;
+    wire [1:0] sram_bresp;
 
     wire [31:0] rs1_data, rs2_data;
     wire [31:0] imm;
@@ -105,28 +123,13 @@ module top(
         .inst_done(inst_done),
         .inst(inst),
         .inst_valid(inst_valid),
-        .reqValid(ifu_reqValid),
-        .reqReady(ifu_reqReady),
-        .addr(ifu_addr),
-        .rrespValid(ifu_rrespValid),
-        .rrespReady(ifu_rrespReady),
-        .rdata(ifu_rdata)
-    );
-
-    SRAM #(32) ifu_sram (
-        .clk(clk),
-        .reset(reset),
-        .reqValid(ifu_reqValid),
-        .reqReady(ifu_reqReady),
-        .addr(ifu_addr),
-        .wen(1'b0),
-        .wdata(32'b0),
-        .wmask(4'b0),
-        .rrespValid(ifu_rrespValid),
-        .rrespReady(ifu_rrespReady),
+        .arvalid(ifu_arvalid),
+        .arready(ifu_arready),
+        .araddr(ifu_araddr),
+        .rvalid(ifu_rvalid),
+        .rready(ifu_rready),
         .rdata(ifu_rdata),
-        .wrespValid(),
-        .wrespReady(1'b0)
+        .rresp(ifu_rresp)
     );
 
     RegisterFile #(5, 32) rf0 (
@@ -211,33 +214,91 @@ module top(
         .mem_wmask(mem_wmask),
         .mem_rdata(mem_rdata),
         .inst_done(inst_done),
-        .reqValid(lsu_reqValid),
-        .reqReady(lsu_reqReady),
-        .addr(lsu_addr),
-        .wen(lsu_wen),
-        .wdata(lsu_wdata),
-        .wmask(lsu_wmask),
-        .rrespValid(lsu_rrespValid),
-        .rrespReady(lsu_rrespReady),
+        .arvalid(lsu_arvalid),
+        .arready(lsu_arready),
+        .araddr(lsu_araddr),
+        .rvalid(lsu_rvalid),
+        .rready(lsu_rready),
         .rdata(lsu_rdata),
-        .wrespValid(lsu_wrespValid),
-        .wrespReady(lsu_wrespReady)
+        .rresp(lsu_rresp),
+        .awvalid(lsu_awvalid),
+        .awready(lsu_awready),
+        .awaddr(lsu_awaddr),
+        .wvalid(lsu_wvalid),
+        .wready(lsu_wready),
+        .wdata(lsu_wdata),
+        .wstrb(lsu_wstrb),
+        .bvalid(lsu_bvalid),
+        .bready(lsu_bready),
+        .bresp(lsu_bresp)
     );
 
-    SRAM #(32) lsu_sram (
+    Arbiter arbiter (
         .clk(clk),
         .reset(reset),
-        .reqValid(lsu_reqValid),
-        .reqReady(lsu_reqReady),
-        .addr(lsu_addr),
-        .wen(lsu_wen),
-        .wdata(lsu_wdata),
-        .wmask(lsu_wmask),
-        .rrespValid(lsu_rrespValid),
-        .rrespReady(lsu_rrespReady),
-        .rdata(lsu_rdata),
-        .wrespValid(lsu_wrespValid),
-        .wrespReady(lsu_wrespReady)
+        .ifu_arvalid(ifu_arvalid),
+        .ifu_arready(ifu_arready),
+        .ifu_araddr(ifu_araddr),
+        .ifu_rvalid(ifu_rvalid),
+        .ifu_rready(ifu_rready),
+        .ifu_rdata(ifu_rdata),
+        .ifu_rresp(ifu_rresp),
+        .lsu_arvalid(lsu_arvalid),
+        .lsu_arready(lsu_arready),
+        .lsu_araddr(lsu_araddr),
+        .lsu_rvalid(lsu_rvalid),
+        .lsu_rready(lsu_rready),
+        .lsu_rdata(lsu_rdata),
+        .lsu_rresp(lsu_rresp),
+        .lsu_awvalid(lsu_awvalid),
+        .lsu_awready(lsu_awready),
+        .lsu_awaddr(lsu_awaddr),
+        .lsu_wvalid(lsu_wvalid),
+        .lsu_wready(lsu_wready),
+        .lsu_wdata(lsu_wdata),
+        .lsu_wstrb(lsu_wstrb),
+        .lsu_bvalid(lsu_bvalid),
+        .lsu_bready(lsu_bready),
+        .lsu_bresp(lsu_bresp),
+        .s_arvalid(sram_arvalid),
+        .s_arready(sram_arready),
+        .s_araddr(sram_araddr),
+        .s_rvalid(sram_rvalid),
+        .s_rready(sram_rready),
+        .s_rdata(sram_rdata),
+        .s_rresp(sram_rresp),
+        .s_awvalid(sram_awvalid),
+        .s_awready(sram_awready),
+        .s_awaddr(sram_awaddr),
+        .s_wvalid(sram_wvalid),
+        .s_wready(sram_wready),
+        .s_wdata(sram_wdata),
+        .s_wstrb(sram_wstrb),
+        .s_bvalid(sram_bvalid),
+        .s_bready(sram_bready),
+        .s_bresp(sram_bresp)
+    );
+
+    SRAM #(32) sram (
+        .clk(clk),
+        .reset(reset),
+        .arvalid(sram_arvalid),
+        .arready(sram_arready),
+        .araddr(sram_araddr),
+        .rvalid(sram_rvalid),
+        .rready(sram_rready),
+        .rdata(sram_rdata),
+        .rresp(sram_rresp),
+        .awvalid(sram_awvalid),
+        .awready(sram_awready),
+        .awaddr(sram_awaddr),
+        .wvalid(sram_wvalid),
+        .wready(sram_wready),
+        .wdata(sram_wdata),
+        .wstrb(sram_wstrb),
+        .bvalid(sram_bvalid),
+        .bready(sram_bready),
+        .bresp(sram_bresp)
     );
 
 endmodule
