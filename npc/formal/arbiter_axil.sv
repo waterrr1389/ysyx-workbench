@@ -150,11 +150,13 @@ module arbiter_axil (
     if (f_lsu_wr != 0)  assume(!lsu_arvalid && !lsu_wvalid);
   end
 
-  // The contract sram_axil assumes, stated here over the same counters.
+  // The contract xbar_axil assumes of its master, stated here over the same
+  // counters: one transaction at a time, nothing new until it completes.
   always @(*) if (!reset) begin
     assert(!(s_arvalid && (s_awvalid || s_wvalid)));
-    if (f_s_awr != 0 || f_s_wr != 0) assert(!s_arvalid);
-    if (f_s_rd != 0) assert(!s_awvalid && !s_wvalid);
+    if (f_s_rd != 0) assert(!s_arvalid && !s_awvalid && !s_wvalid);
+    if (f_s_awr != 0) assert(!s_arvalid && !s_awvalid);
+    if (f_s_wr != 0)  assert(!s_arvalid && !s_wvalid);
   end
 
   // Every transaction the SRAM sees belongs to exactly one master, and only

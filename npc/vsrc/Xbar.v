@@ -125,7 +125,7 @@ module Xbar (
     end
 
     always @(posedge clk) begin
-        if (reset || state == XBAR_IDLE) err_resp <= 1'b0;
+        if (reset || r_fire || b_fire) err_resp <= 1'b0;
         else if (route == ROUTE_ERR && (arready && arvalid || awready && awvalid))
             err_resp <= 1'b1;
     end
