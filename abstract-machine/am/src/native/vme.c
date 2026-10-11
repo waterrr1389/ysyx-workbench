@@ -1,4 +1,6 @@
+#ifndef _GNU_SOURCE  // sdl2-config may already pass -D_GNU_SOURCE=1
 #define _GNU_SOURCE
+#endif
 #include <search.h>
 #include "platform.h"
 

@@ -164,9 +164,10 @@ module xbar_axil (
 
   // Address decoding: a request reaches a slave only inside its range.
   always @(*) if (!reset) begin
-    if (sram_arvalid) assert(sram_araddr - 32'h8000_0000 < 32'h0200_0000);
+    if (sram_arvalid) assert(sram_araddr - 32'h8000_0000 < 32'h0200_0000
+                          || sram_araddr - 32'ha000_0048 < 32'h0000_0008);
     if (sram_awvalid) assert(sram_awaddr - 32'h8000_0000 < 32'h0200_0000);
-    if (uart_awvalid) assert(uart_awaddr - 32'ha000_03f8 < 32'h0000_0008);
+    if (uart_awvalid) assert(uart_awaddr - 32'h1000_0000 < 32'h0000_0008);
   end
 
   // Induction invariants: tie the latched route to the transaction counted

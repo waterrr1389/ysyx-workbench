@@ -1,4 +1,6 @@
+#ifndef _GNU_SOURCE  // sdl2-config may already pass -D_GNU_SOURCE=1
 #define _GNU_SOURCE
+#endif
 #include <sys/mman.h>
 #include <sys/auxv.h>
 #include <dlfcn.h>
