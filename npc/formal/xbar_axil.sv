@@ -162,6 +162,13 @@ module xbar_axil (
     if (f_sram_rd != 0) assert(!sram_awvalid && !sram_wvalid);
   end
 
+  // Address decoding: a request reaches a slave only inside its range.
+  always @(*) if (!reset) begin
+    if (sram_arvalid) assert(sram_araddr - 32'h8000_0000 < 32'h0200_0000);
+    if (sram_awvalid) assert(sram_awaddr - 32'h8000_0000 < 32'h0200_0000);
+    if (uart_awvalid) assert(uart_awaddr - 32'ha000_03f8 < 32'h0000_0008);
+  end
+
   // Induction invariants: tie the latched route to the transaction counted
   // on each side. f_state, f_route and f_err_resp are exported from the
   // copy the Makefile adapts.
