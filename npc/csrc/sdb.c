@@ -92,8 +92,8 @@ static int cmd_si(char *args) {
 	} else {
 		sscanf(args, "%d", &n);
 	}
-  for (int i = 0; i < n; i++) {
-	  step_one_cycle();
+  for (int i = 0; i < n && sim; i++) {
+	  step_one_inst();
   }
 
 	return 0;

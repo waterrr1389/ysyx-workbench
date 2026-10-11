@@ -110,7 +110,6 @@ long load_img(void) {
 }
 
 static void trace_inst() {
-  current_pc = top->pc;
 #if NPC_NEED_INST_TRACE
   uint32_t inst = host_pmem_read(current_pc, 4);
 
@@ -155,17 +154,26 @@ static void tick() {
   top->clk = 1; top->eval(); dump_wave();
 }
 
-void step_one_cycle(void) {
-  trace_inst();
-  uint32_t pc = current_pc;
+// Trace and diff only on cycles that commit an instruction.
+bool step_one_cycle(void) {
+  current_pc = top->pc;
+  // Read before the clock edge; commit goes low after it.
+  bool commit = top->commit;
+  if (commit) {
+    trace_inst();
+  }
   tick();
 #if NPC_DIFFTEST
-  if (sim) {
-    difftest_step(pc, top->pc);
+  if (commit && sim) {
+    difftest_step(current_pc, top->pc);
   }
-#else
-  (void)pc;
 #endif
+  return commit;
+}
+
+void step_one_inst(void) {
+  while (sim && !step_one_cycle()) {
+  }
 }
 
 void sim_init(void) {

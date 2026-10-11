@@ -28,7 +28,8 @@ extern uint32_t current_pc;
 extern NPCState npc_state;
 
 long load_img(void);
-void step_one_cycle(void);
+bool step_one_cycle(void);
+void step_one_inst(void);
 void sim_init(void);
 void sim_exit(void);
 int sim_status(void);

@@ -3,7 +3,9 @@
 module top(
     input clk,
     input reset,
-    output [31:0] pc
+    output [31:0] pc,
+    // High when the next clock edge commits the instruction at pc.
+    output commit
 );
     wire [31:0] pc_val, pc_next, pc_plus_4;
     wire pc_wen;
@@ -115,6 +117,7 @@ module top(
         .wen(pc_wen)
     );
     assign pc = pc_val;
+    assign commit = pc_wen;
 
     IFU #(32) ifu (
         .clk(clk),
