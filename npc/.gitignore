@@ -5,9 +5,12 @@
 !*.mk
 !*.[cSh]
 !*.v
+!*.sv
 !*.vh
+!*.sby
 !*.cc
 !*.cpp
 !.gitignore
 !README.md
+!AGENTS.md
 build/

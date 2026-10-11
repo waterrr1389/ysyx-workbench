@@ -1,0 +1,27 @@
+[tasks]
+bmc
+cover
+prove
+
+[options]
+bmc: mode bmc
+bmc: depth 24
+cover: mode cover
+cover: depth 24
+prove: mode prove
+prove: depth 16
+
+[engines]
+smtbmc yices
+
+[script]
+read -formal SRAM.v
+read -formal sram_axil.sv
+# Read last: they set `default_nettype none for the files after them.
+read -formal faxil_slave.v
+prep -top sram_axil
+
+[files]
+build/SRAM.v
+sram_axil.sv
+vendor/faxil_slave.v
