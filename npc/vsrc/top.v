@@ -32,6 +32,7 @@ module top(
     wire lsu_bvalid, lsu_bready;
     wire [1:0] lsu_bresp;
 
+    // Xbar -> SRAM.
     wire sram_arvalid, sram_arready;
     wire [31:0] sram_araddr;
     wire sram_rvalid, sram_rready;
@@ -44,6 +45,34 @@ module top(
     wire [3:0] sram_wstrb;
     wire sram_bvalid, sram_bready;
     wire [1:0] sram_bresp;
+
+    // Arbiter -> Xbar.
+    wire bus_arvalid, bus_arready;
+    wire [31:0] bus_araddr;
+    wire bus_rvalid, bus_rready;
+    wire [31:0] bus_rdata;
+    wire [1:0] bus_rresp;
+    wire bus_awvalid, bus_awready;
+    wire [31:0] bus_awaddr;
+    wire bus_wvalid, bus_wready;
+    wire [31:0] bus_wdata;
+    wire [3:0] bus_wstrb;
+    wire bus_bvalid, bus_bready;
+    wire [1:0] bus_bresp;
+
+    // Xbar -> UART.
+    wire uart_arvalid, uart_arready;
+    wire [31:0] uart_araddr;
+    wire uart_rvalid, uart_rready;
+    wire [31:0] uart_rdata;
+    wire [1:0] uart_rresp;
+    wire uart_awvalid, uart_awready;
+    wire [31:0] uart_awaddr;
+    wire uart_wvalid, uart_wready;
+    wire [31:0] uart_wdata;
+    wire [3:0] uart_wstrb;
+    wire uart_bvalid, uart_bready;
+    wire [1:0] uart_bresp;
 
     wire [31:0] rs1_data, rs2_data;
     wire [31:0] imm;
@@ -263,23 +292,79 @@ module top(
         .lsu_bvalid(lsu_bvalid),
         .lsu_bready(lsu_bready),
         .lsu_bresp(lsu_bresp),
-        .s_arvalid(sram_arvalid),
-        .s_arready(sram_arready),
-        .s_araddr(sram_araddr),
-        .s_rvalid(sram_rvalid),
-        .s_rready(sram_rready),
-        .s_rdata(sram_rdata),
-        .s_rresp(sram_rresp),
-        .s_awvalid(sram_awvalid),
-        .s_awready(sram_awready),
-        .s_awaddr(sram_awaddr),
-        .s_wvalid(sram_wvalid),
-        .s_wready(sram_wready),
-        .s_wdata(sram_wdata),
-        .s_wstrb(sram_wstrb),
-        .s_bvalid(sram_bvalid),
-        .s_bready(sram_bready),
-        .s_bresp(sram_bresp)
+        .s_arvalid(bus_arvalid),
+        .s_arready(bus_arready),
+        .s_araddr(bus_araddr),
+        .s_rvalid(bus_rvalid),
+        .s_rready(bus_rready),
+        .s_rdata(bus_rdata),
+        .s_rresp(bus_rresp),
+        .s_awvalid(bus_awvalid),
+        .s_awready(bus_awready),
+        .s_awaddr(bus_awaddr),
+        .s_wvalid(bus_wvalid),
+        .s_wready(bus_wready),
+        .s_wdata(bus_wdata),
+        .s_wstrb(bus_wstrb),
+        .s_bvalid(bus_bvalid),
+        .s_bready(bus_bready),
+        .s_bresp(bus_bresp)
+    );
+
+    Xbar xbar (
+        .clk(clk),
+        .reset(reset),
+        .arvalid(bus_arvalid),
+        .arready(bus_arready),
+        .araddr(bus_araddr),
+        .rvalid(bus_rvalid),
+        .rready(bus_rready),
+        .rdata(bus_rdata),
+        .rresp(bus_rresp),
+        .awvalid(bus_awvalid),
+        .awready(bus_awready),
+        .awaddr(bus_awaddr),
+        .wvalid(bus_wvalid),
+        .wready(bus_wready),
+        .wdata(bus_wdata),
+        .wstrb(bus_wstrb),
+        .bvalid(bus_bvalid),
+        .bready(bus_bready),
+        .bresp(bus_bresp),
+        .sram_arvalid(sram_arvalid),
+        .sram_arready(sram_arready),
+        .sram_araddr(sram_araddr),
+        .sram_rvalid(sram_rvalid),
+        .sram_rready(sram_rready),
+        .sram_rdata(sram_rdata),
+        .sram_rresp(sram_rresp),
+        .sram_awvalid(sram_awvalid),
+        .sram_awready(sram_awready),
+        .sram_awaddr(sram_awaddr),
+        .sram_wvalid(sram_wvalid),
+        .sram_wready(sram_wready),
+        .sram_wdata(sram_wdata),
+        .sram_wstrb(sram_wstrb),
+        .sram_bvalid(sram_bvalid),
+        .sram_bready(sram_bready),
+        .sram_bresp(sram_bresp),
+        .uart_arvalid(uart_arvalid),
+        .uart_arready(uart_arready),
+        .uart_araddr(uart_araddr),
+        .uart_rvalid(uart_rvalid),
+        .uart_rready(uart_rready),
+        .uart_rdata(uart_rdata),
+        .uart_rresp(uart_rresp),
+        .uart_awvalid(uart_awvalid),
+        .uart_awready(uart_awready),
+        .uart_awaddr(uart_awaddr),
+        .uart_wvalid(uart_wvalid),
+        .uart_wready(uart_wready),
+        .uart_wdata(uart_wdata),
+        .uart_wstrb(uart_wstrb),
+        .uart_bvalid(uart_bvalid),
+        .uart_bready(uart_bready),
+        .uart_bresp(uart_bresp)
     );
 
     SRAM #(32) sram (
@@ -302,6 +387,28 @@ module top(
         .bvalid(sram_bvalid),
         .bready(sram_bready),
         .bresp(sram_bresp)
+    );
+
+    UART #(32) uart (
+        .clk(clk),
+        .reset(reset),
+        .arvalid(uart_arvalid),
+        .arready(uart_arready),
+        .araddr(uart_araddr),
+        .rvalid(uart_rvalid),
+        .rready(uart_rready),
+        .rdata(uart_rdata),
+        .rresp(uart_rresp),
+        .awvalid(uart_awvalid),
+        .awready(uart_awready),
+        .awaddr(uart_awaddr),
+        .wvalid(uart_wvalid),
+        .wready(uart_wready),
+        .wdata(uart_wdata),
+        .wstrb(uart_wstrb),
+        .bvalid(uart_bvalid),
+        .bready(uart_bready),
+        .bresp(uart_bresp)
     );
 
 endmodule
