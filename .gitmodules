@@ -6,3 +6,11 @@
 	path = riscv-arch-test-am
 	url = https://github.com/NJU-ProjectN/riscv-arch-test-am
 	ignore = dirty
+[submodule "rt-thread-am"]
+	path = rt-thread-am
+	url = git@github.com:waterrr1389/rt-thread-am.git
+	branch = ysyx-local
+[submodule "ysyxSoC"]
+	path = ysyxSoC
+	url = git@github.com:waterrr1389/ysyxSoC.git
+	branch = ysyx-local
