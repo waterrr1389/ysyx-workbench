@@ -28,6 +28,9 @@ static Uint32 texture_sync(Uint32 interval, void *param) {
 }
 
 void __am_gpu_init() {
+  // texture_sync() presents from the SDL timer thread; an accelerated
+  // (GL/EGL) window surface is not safe to use off its creating thread.
+  SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "0");
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
   window = SDL_CreateWindow("Native Application",
       SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
