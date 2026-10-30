@@ -76,3 +76,19 @@ All commands run from `work/` after `source ../env.sh`.
 retirement; the harness keeps a shadow GPR file, ends on ebreak, and runs DiffTest against Spike
 (`processor_t` on a custom `simif_t` that models MROM/SRAM/flash/PSRAM/SDRAM). Retirements touching
 devices are marked skip and the REF state is synced from the DUT.
+
+## SoC boot and devices
+
+* Reset PC is `0x30000000` (XIP flash). The FSBL in AM `start.S` runs in place and copies the
+  SSBL into SRAM (`0x0f000000`); the SSBL copies the image into `YSYXSOC_RAM` (`sdram` by default,
+  or `psram`/`sram`) and zeroes bss. The stack stays in SRAM. The linker script uses no MEMORY
+  regions so sections inserted by programs keep the image contiguous in flash and RAM.
+* ysyxSoC device RTL lives in `deps/ysyxSoC/perip`: XIP flash through the SPI master, PSRAM and
+  SDRAM chip models, GPIO, PS/2, VGA and the bitrev SPI slave. SDRAM is extended to two ranks of
+  two x16 chips (32-bit words, 128 MiB) in the Chisel sources; `make sim` regenerates
+  `ysyxSoCFull.v` when they change.
+* The batch harness models the board: `--uart-input/--uart-after/--uart-exit` (serial line),
+  `--switches`, `--trace-gpio`, `--ps2 HEX,...` with `--ps2-at`, and `--vga-dump FILE.ppm`.
+  `make nvboard` / `make run-nvboard IMG=...` build and run the interactive NVBoard version.
+* `make test-mem [MEM_KIB=N]` runs mem-test over PSRAM and SDRAM (the full sweep takes hours);
+  `make test-rtthread` boots RT-Thread and runs a command typed over UART.
