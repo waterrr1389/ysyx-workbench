@@ -67,6 +67,7 @@ All commands run from `work/` after `source ../env.sh`.
 * `make test-cpu` runs every am-kernels cpu-test on ysyxSoC with DiffTest (`wrong` must fail).
 * AM programs: `make ARCH=riscv32e-ysyxsoc run` in any am-kernels directory (`YSYX_WORK` points
   the AM run rule at this directory).
+* `make syn [SYN_FREQ=MHz]` synthesizes the core on nangate45 and runs STA (`build/syn/`).
 * yosys cannot parse package imports in module headers, so synthesis and formal flows convert
   the RTL with `sv2v -DSYNTHESIS` first.
 

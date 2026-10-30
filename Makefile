@@ -89,4 +89,17 @@ lint:
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: sim lint clean run-img test-cpu test-mem test-rtthread nvboard run-nvboard
+.PHONY: syn sim lint clean run-img test-cpu test-mem test-rtthread nvboard run-nvboard
+
+# Synthesis and static timing of the core (without ysyxSoC) on nangate45.
+SYN_DIR  := $(BUILD)/syn
+SYN_V    := $(SYN_DIR)/ysyx_00000000.v
+SYN_FREQ ?= 500
+$(SYN_V): $(RTL_SRCS)
+	@mkdir -p $(SYN_DIR)
+	sv2v -DSYNTHESIS $(RTL_SRCS) > $@
+
+syn: $(SYN_V)
+	timeout 3600 $(MAKE) -C $(YOSYS_STA_HOME) sta PDK=nangate45 DESIGN=ysyx_00000000 \
+	  RTL_FILES=$(abspath $(SYN_V)) CLK_PORT_NAME=clock CLK_FREQ_MHZ=$(SYN_FREQ) O=$(abspath $(SYN_DIR))
+	@grep -i "chip area" $(SYN_DIR)/ysyx_00000000-$(SYN_FREQ)MHz/synth_stat.txt || true
