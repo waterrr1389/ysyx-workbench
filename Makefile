@@ -23,7 +23,7 @@ VFLAGS += --trace-fst -CFLAGS -DTRACE
 endif
 
 # Core clock the ysyxSoC delayers calibrate device latency to (devices run at 100 MHz).
-CPU_MHZ ?= 700
+CPU_MHZ ?= 715
 DELAY_R_X256 := $(shell echo $$(( $(CPU_MHZ) * 256 / 100 )))
 # Extra +define+ options, e.g. an icache shape: SIM_DEFINES=+define+ICACHE_SETS=8
 SIM_DEFINES ?=
@@ -91,6 +91,11 @@ MEM_KIB ?=
 test-mem: $(SIM_BIN)
 	scripts/test-mem.sh $(SIM_BIN) $(AM_KERNELS_HOME) $(MEM_KIB)
 
+# microbench with performance counters; MB_SIZE is test, train (default) or ref.
+MB_SIZE ?= train
+microbench: $(SIM_BIN)
+	scripts/microbench.sh $(SIM_BIN) $(AM_KERNELS_HOME) $(MB_SIZE)
+
 # RT-Thread on ysyxSoC with a shell command typed over UART.
 RT_THREAD_BSP ?= $(YSYX_HOME)/deps/rt-thread-am/bsp/abstract-machine
 test-rtthread: $(SIM_BIN)
@@ -103,7 +108,7 @@ lint:
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: syn sim lint clean run-img test-cpu test-mem test-rtthread nvboard run-nvboard
+.PHONY: microbench syn sim lint clean run-img test-cpu test-mem test-rtthread nvboard run-nvboard
 
 # Synthesis and static timing of the core (without ysyxSoC) on nangate45.
 SYN_DIR  ?= $(BUILD)/syn
