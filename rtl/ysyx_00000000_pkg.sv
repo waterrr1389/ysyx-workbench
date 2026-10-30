@@ -16,6 +16,11 @@ package ysyx_00000000_pkg;
 
   typedef enum logic [1:0] { CF_NONE, CF_BRANCH, CF_JAL, CF_JALR } cf_e;
 
+  // Instruction class reported at retirement for performance counters only.
+  typedef enum logic [2:0] {
+    IC_ALU, IC_BRANCH, IC_JUMP, IC_LOAD, IC_STORE, IC_CSR, IC_SYSTEM
+  } inst_class_e;
+
   localparam logic [3:0] EXC_INST_MISALIGN = 4'd0;
   localparam logic [3:0] EXC_INST_FAULT    = 4'd1;
   localparam logic [3:0] EXC_ILLEGAL       = 4'd2;
@@ -150,6 +155,7 @@ package ysyx_00000000_pkg;
     logic        fencei;
     logic        ebreak;
     exc_t        exc;
+    cf_e         cf;         // performance counters only
   } ex2mem_t;
 
   typedef struct packed {
@@ -163,6 +169,7 @@ package ysyx_00000000_pkg;
     logic        skip;       // result differs from the reference model by design (ID CSRs)
     logic        mem_access;
     logic [31:0] mem_addr;   // lets the environment tell device accesses from memory accesses
+    inst_class_e cls;
   } mem2wb_t;
 
 endpackage

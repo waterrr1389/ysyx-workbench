@@ -107,6 +107,7 @@ module ysyx_00000000_EXU
     out_bits.fencei   = r.fencei;
     out_bits.ebreak   = r.ebreak;
     out_bits.exc      = exc;
+    out_bits.cf       = r.cf;
   end
 
 endmodule

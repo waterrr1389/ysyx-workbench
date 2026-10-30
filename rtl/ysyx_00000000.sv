@@ -190,7 +190,13 @@ module ysyx_00000000
   assign io_master_wlast   = w.last;
 
 `ifndef SYNTHESIS
-  ysyx_00000000_SimHook u_simhook (.clock, .retire_valid, .retire_bits);
+  ysyx_00000000_SimHook u_simhook (
+    .clock, .reset, .retire_valid, .retire_bits,
+    .imem_req_fire(imem_req_valid && imem_req_ready), .imem_req_addr,
+    .imem_resp_fire(imem_resp_valid && imem_resp_ready),
+    .dmem_req_fire(dmem_req_valid && dmem_req_ready), .dmem_req_wen, .dmem_req_addr,
+    .dmem_resp_fire(dmem_resp_valid)
+  );
 `endif
 
   wire unused = &{1'b0, io_interrupt};

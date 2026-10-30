@@ -174,6 +174,12 @@ module ysyx_00000000_MEU
                           (r.csr_addr == CSR_MVENDORID || r.csr_addr == CSR_MARCHID);
     out_bits.mem_access = mem_go;
     out_bits.mem_addr   = r.result;
+    out_bits.cls        = r.mem_ren                  ? IC_LOAD   :
+                          r.mem_wen                  ? IC_STORE  :
+                          r.csr_op != CSR_NONE       ? IC_CSR    :
+                          (r.mret || r.fencei || r.ebreak || exc.valid) ? IC_SYSTEM :
+                          r.cf == CF_BRANCH          ? IC_BRANCH :
+                          r.cf != CF_NONE            ? IC_JUMP   : IC_ALU;
   end
 
 endmodule

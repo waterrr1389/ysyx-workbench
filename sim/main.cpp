@@ -10,6 +10,7 @@
 #include "VysyxSoCFull.h"
 #include "difftest.h"
 #include "mem.h"
+#include "perf.h"
 
 #ifdef TRACE
 #include <verilated_fst_c.h>
@@ -24,7 +25,7 @@ namespace {
 
 struct Retire {
   uint32_t pc, wdata, mem_addr;
-  uint8_t rd, rd_wen, trap, ebreak, skip, mem_access;
+  uint8_t rd, rd_wen, trap, ebreak, skip, mem_access, cls;
 };
 
 std::vector<Retire> retired;
@@ -174,8 +175,9 @@ struct Options {
   bool trace_gpio = false;
   std::vector<uint8_t> ps2;
   uint64_t ps2_at = 0;
-  std::string mrom, flash, wave, uart_input, uart_after, uart_exit;
+  std::string mrom, flash, wave, itrace, uart_input, uart_after, uart_exit;
   int uart_bit = 16;
+  bool perf = false;
   bool difftest = false;
   uint64_t max_cycles = 2000000000ull;
 };
@@ -197,6 +199,7 @@ void usage(const char *prog) {
   fprintf(stderr,
           "usage: %s [--mrom IMG] [--flash IMG] [--difftest] [--max-cycles N] [--wave FILE]\n"
           "          [--uart-input STR [--uart-after PROMPT]] [--uart-bit CYCLES]\n"
+          "          [--perf] [--itrace FILE]  counters at exit; fetch address trace for cachesim\n"
           "          [--uart-exit STR]  end successfully once STR is output after the input\n"
           "          [--switches V] [--trace-gpio] [--ps2 HEX,HEX,... [--ps2-at CYCLE]]\n"
           "          [--vga-dump FILE.ppm [--vga-skip FRAMES]]\n"
@@ -217,6 +220,8 @@ Options parse(int argc, char **argv) {
     else if (a == "--difftest") o.difftest = true;
     else if (a == "--max-cycles") o.max_cycles = strtoull(next().c_str(), nullptr, 0);
     else if (a == "--wave") o.wave = next();
+    else if (a == "--perf") o.perf = true;
+    else if (a == "--itrace") o.itrace = next();
     else if (a == "--uart-input") o.uart_input = unescape(next());
     else if (a == "--uart-after") o.uart_after = unescape(next());
     else if (a == "--uart-exit") o.uart_exit = unescape(next());
@@ -244,10 +249,10 @@ Options parse(int argc, char **argv) {
 }  // namespace
 
 extern "C" void sim_retire(int pc, char rd, char rd_wen, int wdata, char trap, char ebreak, char skip,
-                           char mem_access, int mem_addr) {
+                           char mem_access, int mem_addr, char cls) {
   retired.push_back(Retire{(uint32_t)pc, (uint32_t)wdata, (uint32_t)mem_addr, (uint8_t)rd,
                            (uint8_t)rd_wen, (uint8_t)trap, (uint8_t)ebreak, (uint8_t)skip,
-                           (uint8_t)mem_access});
+                           (uint8_t)mem_access, (uint8_t)cls});
 }
 
 int main(int argc, char **argv) {
@@ -305,6 +310,7 @@ int main(int argc, char **argv) {
       }
     }
 #endif
+    perf::tick(cycle);
     top->clock = 0;
     top->eval();
 #ifdef TRACE
@@ -323,6 +329,8 @@ int main(int argc, char **argv) {
   top->reset = 0;
   retired.clear();
   cycle = 0;
+  perf::start(cycle);
+  if (!opt.itrace.empty()) perf::open_itrace(opt.itrace);
 
   if (opt.difftest) difftest::init(RESET_PC);
 
@@ -357,6 +365,7 @@ int main(int argc, char **argv) {
     }
     last_retire = cycle;
     for (const Retire &r : retired) {
+      perf::retire(cycle, r.cls);
       if (opt.difftest && difftest::pc() != r.pc) {
         fprintf(stderr, "difftest: pc mismatch, dut 0x%08x ref 0x%08x\n", r.pc, difftest::pc());
         status = 1;
@@ -397,6 +406,8 @@ int main(int argc, char **argv) {
   fflush(stdout);
   fprintf(stderr, "\n[sim] %s at cycle %" PRIu64 ", %" PRIu64 " instructions, IPC %.4f\n", reason.c_str(),
           cycle, insts, cycle ? (double)insts / cycle : 0.0);
+  if (opt.perf) perf::report(cycle);
+  perf::close();
 #ifdef NVBOARD
   nvboard_quit();
 #endif
