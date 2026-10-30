@@ -2,13 +2,14 @@
 // simulator's --itrace) through a set-associative cache and counts misses. Only metadata is kept.
 //
 // usage: cachesim TRACE BLOCK_BYTES SETS WAYS [lru|fifo|random]
-//   TRACE may be "-" for stdin, so compressed traces can be piped in. The entry 1 marks fence.i,
+//   TRACE may be "-" for stdin, or a .zst file that is decompressed with zstd. The entry 1 marks fence.i,
 //   which invalidates the whole cache.
 // Output: one line "block sets ways policy accesses misses".
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 #include <vector>
 
 int main(int argc, char **argv) {
@@ -16,7 +17,11 @@ int main(int argc, char **argv) {
     fprintf(stderr, "usage: %s TRACE BLOCK_BYTES SETS WAYS [lru|fifo|random]\n", argv[0]);
     return 2;
   }
-  FILE *fp = strcmp(argv[1], "-") == 0 ? stdin : fopen(argv[1], "rb");
+  size_t len = strlen(argv[1]);
+  FILE *fp = strcmp(argv[1], "-") == 0 ? stdin
+           : len > 4 && strcmp(argv[1] + len - 4, ".zst") == 0
+               ? popen((std::string("zstd -dcq '") + argv[1] + "'").c_str(), "r")
+               : fopen(argv[1], "rb");
   if (!fp) { perror(argv[1]); return 2; }
   const uint32_t block = atoi(argv[2]), sets = atoi(argv[3]), ways = atoi(argv[4]);
   const char *policy = argc > 5 ? argv[5] : "lru";

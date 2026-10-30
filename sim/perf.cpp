@@ -55,8 +55,16 @@ void flush_itrace() {
 
 }  // namespace
 
+bool itrace_piped = false;
+
 void open_itrace(const std::string &path) {
-  itrace = fopen(path.c_str(), "wb");
+  // Traces of long runs are large; a .zst name compresses on the fly.
+  if (path.size() > 4 && path.compare(path.size() - 4, 4, ".zst") == 0) {
+    itrace = popen(("zstd -q -f -o '" + path + "'").c_str(), "w");
+    itrace_piped = true;
+  } else {
+    itrace = fopen(path.c_str(), "wb");
+  }
   if (!itrace) perror(path.c_str());
 }
 
@@ -100,7 +108,7 @@ void report(uint64_t cycle) {
 
 void close() {
   flush_itrace();
-  if (itrace) fclose(itrace);
+  if (itrace) itrace_piped ? pclose(itrace) : fclose(itrace);
   itrace = nullptr;
 }
 

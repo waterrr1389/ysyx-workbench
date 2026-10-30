@@ -6,7 +6,7 @@
 namespace perf {
 
 // Starts writing every instruction fetch address (little-endian uint32) to `path`; fence.i is
-// written as the address 1.
+// written as the address 1. A path ending in .zst is compressed with zstd.
 void open_itrace(const std::string &path);
 // Counters start from zero at the cycle given here (end of reset).
 void start(uint64_t cycle);
