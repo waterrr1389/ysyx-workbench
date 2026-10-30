@@ -31,7 +31,7 @@ $(SIM_BIN): $(RTL_SRCS) $(SIM_RTL) $(SOC_SRCS) $(CXX_SRCS) $(CXX_HDRS) Makefile
 
 # Run one raw image. BOOT selects where the image is placed; DIFFTEST=0 disables the reference model.
 IMG        ?=
-BOOT       ?= mrom
+BOOT       ?= flash
 DIFFTEST   ?= 1
 MAX_CYCLES ?= 500000000
 SIM_ARGS   := --$(BOOT) $(IMG) --max-cycles $(MAX_CYCLES) $(if $(filter 1,$(DIFFTEST)),--difftest)

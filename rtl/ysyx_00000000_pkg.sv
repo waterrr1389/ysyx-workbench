@@ -1,6 +1,6 @@
 package ysyx_00000000_pkg;
 
-  localparam logic [31:0] RESET_PC = 32'h2000_0000;
+  localparam logic [31:0] RESET_PC = 32'h3000_0000;
 
   typedef enum logic [3:0] {
     ALU_ADD, ALU_SUB, ALU_SLL, ALU_SLT, ALU_SLTU, ALU_XOR, ALU_SRL, ALU_SRA, ALU_OR, ALU_AND

@@ -24,7 +24,7 @@ struct Retire {
 
 std::vector<Retire> retired;
 
-constexpr uint32_t RESET_PC = 0x20000000;
+constexpr uint32_t RESET_PC = 0x30000000;
 constexpr uint64_t WATCHDOG = 1000000;  // cycles without a retirement before giving up
 
 struct Options {
