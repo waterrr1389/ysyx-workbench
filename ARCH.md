@@ -58,6 +58,18 @@ response until accepted. `fencei` pulses invalidate the cache.
 mstatus (MIE, MPIE; MPP hardwired to M), mtvec, mepc, mcause, mvendorid, marchid. Anything else is an
 illegal instruction.
 
+## Build and test
+
+All commands run from `work/` after `source ../env.sh`.
+
+* `make sim` builds the Verilator model (`TRACE=1` adds FST waveforms, `--wave FILE` at run time).
+* `make run-img IMG=x.bin [BOOT=mrom] [DIFFTEST=0]` runs a raw image.
+* `make test-cpu` runs every am-kernels cpu-test on ysyxSoC with DiffTest (`wrong` must fail).
+* AM programs: `make ARCH=riscv32e-ysyxsoc run` in any am-kernels directory (`YSYX_WORK` points
+  the AM run rule at this directory).
+* yosys cannot parse package imports in module headers, so synthesis and formal flows convert
+  the RTL with `sv2v -DSYNTHESIS` first.
+
 ## Simulation
 
 `sim/` is a Verilator C++ harness around `ysyxSoCFull`. A sim-only DPI hook in WBU reports every
