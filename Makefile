@@ -72,6 +72,16 @@ CPU_TESTS := $(AM_KERNELS_HOME)/tests/cpu-tests
 test-cpu: $(SIM_BIN)
 	scripts/test-cpu.sh $(CPU_TESTS)
 
+# The handout's PSRAM and SDRAM memory tests; MEM_KIB limits the tested size (default: all).
+MEM_KIB ?=
+test-mem: $(SIM_BIN)
+	scripts/test-mem.sh $(SIM_BIN) $(AM_KERNELS_HOME) $(MEM_KIB)
+
+# RT-Thread on ysyxSoC with a shell command typed over UART.
+RT_THREAD_BSP ?= $(YSYX_HOME)/deps/rt-thread-am/bsp/abstract-machine
+test-rtthread: $(SIM_BIN)
+	scripts/test-rtthread.sh $(SIM_BIN) $(RT_THREAD_BSP)
+
 # Lint only the core, with all warnings.
 lint:
 	verilator --lint-only -Wall --top-module ysyx_00000000 $(RTL_SRCS) $(SIM_RTL)
@@ -79,4 +89,4 @@ lint:
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: sim lint clean run-img test-cpu nvboard run-nvboard
+.PHONY: sim lint clean run-img test-cpu test-mem test-rtthread nvboard run-nvboard
