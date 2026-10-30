@@ -23,6 +23,8 @@ struct Latency {
 uint64_t now = 0, start_cycle = 0, last_retire = 0;
 uint64_t class_count[NUM_CLASSES], class_cycles[NUM_CLASSES];
 Latency fetch;
+uint64_t icache_hits = 0, icache_miss_start = 0;
+Latency icache_miss;   // from the missing lookup to the end of its refill
 
 // Data accesses are split by target, since their latencies differ by orders of magnitude.
 const char *const REGION_NAMES[] = {"sram", "flash", "psram", "sdram", "device"};
@@ -42,6 +44,8 @@ uint64_t data_req_cycle = 0;
 bool data_is_store = false;
 
 FILE *itrace = nullptr;
+// Trace entry for fence.i; fetch addresses are always word aligned.
+constexpr uint32_t ITRACE_FLUSH = 1;
 std::vector<uint32_t> itrace_buf;
 
 void flush_itrace() {
@@ -80,6 +84,10 @@ void report(uint64_t cycle) {
             (double)class_cycles[i] / class_count[i]);
   }
   fprintf(stderr, "[perf] fetch %" PRIu64 " requests, mean latency %.2f cycles\n", fetch.count, fetch.mean());
+  uint64_t lookups = icache_hits + icache_miss.count;
+  if (lookups)
+    fprintf(stderr, "[perf] icache %" PRIu64 " hits, %" PRIu64 " misses (hit rate %.4f), mean miss penalty %.2f cycles, TMT %" PRIu64 "\n",
+            icache_hits, icache_miss.count, (double)icache_hits / lookups, icache_miss.mean(), icache_miss.total);
   for (int i = 0; i < NUM_REGIONS; i++) {
     if (load[i].count)
       fprintf(stderr, "[perf] load  %-6s %10" PRIu64 " requests, mean latency %.2f cycles\n", REGION_NAMES[i],
@@ -125,4 +133,12 @@ extern "C" void sim_mem_event(char events, int imem_addr, int dmem_addr) {
 
 namespace perf {
 void tick(uint64_t cycle) { now = cycle; }
+}
+
+extern "C" void sim_icache_event(char ev) {
+  using namespace perf;
+  if (ev == 0) icache_hits++;
+  else if (ev == 1) icache_miss_start = now;
+  else if (ev == 2) icache_miss.add(now - icache_miss_start + 1);
+  else if (itrace) itrace_buf.push_back(ITRACE_FLUSH);
 }
