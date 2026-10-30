@@ -43,6 +43,11 @@ class SerialLine {
     armed = trigger.empty();
   }
 
+  // True once all input has been typed and the output since then contains `marker`.
+  bool output_after_input_contains(const std::string &marker) const {
+    return pending.empty() && rx_bits == 0 && after_input.find(marker) != std::string::npos;
+  }
+
   // Called once per cycle with the TX pin; returns the RX pin level.
   bool step(bool tx) {
     decode(tx);
@@ -80,12 +85,13 @@ class SerialLine {
     if (tx_bits >= 1 && tx_bits <= 8) tx_data |= (uint32_t)tx << (8 - tx_bits);
     if (tx_bits == 0) {
       seen.push_back((char)tx_data);
+      if (pending.empty() && rx_bits == 0 && after_input.size() < 65536) after_input.push_back((char)tx_data);
       if (seen.size() > 256) seen.erase(0, seen.size() - 256);
     }
   }
 
   int bit;
-  std::string pending, trigger, seen;
+  std::string pending, trigger, seen, after_input;
   bool armed = true;
   uint32_t rx_frame = 0, tx_data = 0;
   int rx_bits = 0, rx_cnt = 0, tx_bits = 0, tx_cnt = 0;
@@ -168,7 +174,7 @@ struct Options {
   bool trace_gpio = false;
   std::vector<uint8_t> ps2;
   uint64_t ps2_at = 0;
-  std::string mrom, flash, wave, uart_input, uart_after;
+  std::string mrom, flash, wave, uart_input, uart_after, uart_exit;
   int uart_bit = 16;
   bool difftest = false;
   uint64_t max_cycles = 2000000000ull;
@@ -191,6 +197,7 @@ void usage(const char *prog) {
   fprintf(stderr,
           "usage: %s [--mrom IMG] [--flash IMG] [--difftest] [--max-cycles N] [--wave FILE]\n"
           "          [--uart-input STR [--uart-after PROMPT]] [--uart-bit CYCLES]\n"
+          "          [--uart-exit STR]  end successfully once STR is output after the input\n"
           "          [--switches V] [--trace-gpio] [--ps2 HEX,HEX,... [--ps2-at CYCLE]]\n"
           "          [--vga-dump FILE.ppm [--vga-skip FRAMES]]\n"
           "  --uart-input types STR on the serial port; with --uart-after each line waits for PROMPT\n", prog);
@@ -212,6 +219,7 @@ Options parse(int argc, char **argv) {
     else if (a == "--wave") o.wave = next();
     else if (a == "--uart-input") o.uart_input = unescape(next());
     else if (a == "--uart-after") o.uart_after = unescape(next());
+    else if (a == "--uart-exit") o.uart_exit = unescape(next());
     else if (a == "--uart-bit") o.uart_bit = atoi(next().c_str());
     else if (a == "--switches") o.switches = strtoul(next().c_str(), nullptr, 0);
     else if (a == "--trace-gpio") o.trace_gpio = true;
@@ -330,6 +338,11 @@ int main(int argc, char **argv) {
       break;
     }
     tick();
+    if (!opt.uart_exit.empty() && (cycle & 1023) == 0 && serial.output_after_input_contains(opt.uart_exit)) {
+      status = 0;
+      reason = "expected UART output seen";
+      break;
+    }
     if (Verilated::gotFinish()) {
       status = 1;
       reason = "$finish in RTL";
