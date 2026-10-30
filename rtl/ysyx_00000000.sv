@@ -103,7 +103,19 @@ module ysyx_00000000
   axi_a_t if_ar_bits;
   axi_r_t if_r_bits;
 
-  ysyx_00000000_ICache u_icache (
+  // The icache shape can be overridden for design space exploration.
+`ifndef ICACHE_BLOCK_BYTES
+`define ICACHE_BLOCK_BYTES 16
+`endif
+`ifndef ICACHE_SETS
+`define ICACHE_SETS 4
+`endif
+`ifndef ICACHE_WAYS
+`define ICACHE_WAYS 2
+`endif
+  ysyx_00000000_ICache #(
+    .BLOCK_BYTES(`ICACHE_BLOCK_BYTES), .SETS(`ICACHE_SETS), .WAYS(`ICACHE_WAYS)
+  ) u_icache (
     .clock, .reset,
     .req_valid(imem_req_valid), .req_ready(imem_req_ready), .req_addr(imem_req_addr),
     .resp_valid(imem_resp_valid), .resp_ready(imem_resp_ready),

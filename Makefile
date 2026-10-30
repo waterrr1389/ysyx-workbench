@@ -25,6 +25,9 @@ endif
 # Core clock the ysyxSoC delayers calibrate device latency to (devices run at 100 MHz).
 CPU_MHZ ?= 700
 DELAY_R_X256 := $(shell echo $$(( $(CPU_MHZ) * 256 / 100 )))
+# Extra +define+ options, e.g. an icache shape: SIM_DEFINES=+define+ICACHE_SETS=8
+SIM_DEFINES ?=
+VFLAGS += $(SIM_DEFINES)
 VFLAGS += +define+APB_DELAYER_R_X256=$(DELAY_R_X256) +define+AXI4_DELAYER_R_X256=$(DELAY_R_X256)
 # Rebuild when CPU_MHZ changes.
 CPU_MHZ_STAMP := $(BUILD)/cpu_mhz.$(CPU_MHZ)
@@ -103,12 +106,17 @@ clean:
 .PHONY: syn sim lint clean run-img test-cpu test-mem test-rtthread nvboard run-nvboard
 
 # Synthesis and static timing of the core (without ysyxSoC) on nangate45.
-SYN_DIR  := $(BUILD)/syn
+SYN_DIR  ?= $(BUILD)/syn
 SYN_V    := $(SYN_DIR)/ysyx_00000000.v
 SYN_FREQ ?= 500
-$(SYN_V): $(RTL_SRCS)
+# Extra -D options for sv2v, e.g. an icache shape: SYN_DEFINES=-DICACHE_SETS=8
+SYN_DEFINES ?=
+$(SYN_V): $(RTL_SRCS) FORCE
 	@mkdir -p $(SYN_DIR)
-	sv2v -DSYNTHESIS $(RTL_SRCS) > $@
+	sv2v -DSYNTHESIS $(SYN_DEFINES) $(RTL_SRCS) > $@.tmp
+	@cmp -s $@.tmp $@ && rm $@.tmp || mv $@.tmp $@
+
+FORCE:
 
 syn: $(SYN_V)
 	timeout 3600 $(MAKE) -C $(YOSYS_STA_HOME) sta PDK=nangate45 DESIGN=ysyx_00000000 \
