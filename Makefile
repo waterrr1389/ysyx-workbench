@@ -29,6 +29,28 @@ $(SIM_BIN): $(RTL_SRCS) $(SIM_RTL) $(SOC_SRCS) $(CXX_SRCS) $(CXX_HDRS) Makefile
 	verilator $(VFLAGS) --Mdir $(SIM_DIR) $(RTL_SRCS) $(SIM_RTL) $(SOC_SRCS) $(CXX_SRCS) -o $(SIM_BIN)
 	@touch $(SIM_BIN)
 
+# Interactive build with NVBoard (LEDs, switches, 7-segment, PS/2 keyboard, VGA, UART terminal).
+NVB_DIR  := $(BUILD)/nvboard
+NVB_BIN  := $(NVB_DIR)/VysyxSoCFull
+NVB_BIND := $(NVB_DIR)/auto_bind.cpp
+include $(NVBOARD_HOME)/scripts/nvboard.mk
+
+$(NVB_BIND): nvboard/ysyxSoCFull.nxdc
+	@mkdir -p $(NVB_DIR)
+	python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $< $@
+
+$(NVB_BIN): $(RTL_SRCS) $(SIM_RTL) $(SOC_SRCS) $(CXX_SRCS) $(CXX_HDRS) $(NVB_BIND) $(NVBOARD_ARCHIVE) Makefile
+	verilator $(VFLAGS) -CFLAGS "-DNVBOARD -I$(NVBOARD_USR_INC) $$(sdl2-config --cflags)" \
+	  -LDFLAGS "$$(sdl2-config --libs) -lSDL2_image -lSDL2_ttf" \
+	  --Mdir $(NVB_DIR) $(RTL_SRCS) $(SIM_RTL) $(SOC_SRCS) $(CXX_SRCS) $(NVB_BIND) $(NVBOARD_ARCHIVE) -o $(NVB_BIN)
+	@touch $(NVB_BIN)
+
+nvboard: $(NVB_BIN)
+
+# Run an image on NVBoard (no DiffTest, no cycle limit beyond MAX_CYCLES).
+run-nvboard: $(NVB_BIN)
+	$(NVB_BIN) --$(BOOT) $(IMG) --max-cycles $(MAX_CYCLES)
+
 # Run one raw image. BOOT selects where the image is placed; DIFFTEST=0 disables the reference model.
 IMG        ?=
 BOOT       ?= flash
@@ -53,4 +75,4 @@ lint:
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: sim lint clean run-img test-cpu
+.PHONY: sim lint clean run-img test-cpu nvboard run-nvboard
