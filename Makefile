@@ -24,6 +24,10 @@ endif
 
 sim: $(SIM_BIN)
 
+# ysyxSoCFull.v is generated from the ysyxSoC Chisel sources and not tracked there.
+$(YSYXSOC_HOME)/build/ysyxSoCFull.v: $(shell find $(YSYXSOC_HOME)/src -name '*.scala')
+	timeout 1800 $(MAKE) -C $(YSYXSOC_HOME) verilog
+
 $(SIM_BIN): $(RTL_SRCS) $(SIM_RTL) $(SOC_SRCS) $(CXX_SRCS) $(CXX_HDRS) Makefile
 	@mkdir -p $(SIM_DIR)
 	verilator $(VFLAGS) --Mdir $(SIM_DIR) $(RTL_SRCS) $(SIM_RTL) $(SOC_SRCS) $(CXX_SRCS) -o $(SIM_BIN)
