@@ -22,13 +22,24 @@ ifeq ($(TRACE),1)
 VFLAGS += --trace-fst -CFLAGS -DTRACE
 endif
 
+# Core clock the ysyxSoC delayers calibrate device latency to (devices run at 100 MHz).
+CPU_MHZ ?= 700
+DELAY_R_X256 := $(shell echo $$(( $(CPU_MHZ) * 256 / 100 )))
+VFLAGS += +define+APB_DELAYER_R_X256=$(DELAY_R_X256) +define+AXI4_DELAYER_R_X256=$(DELAY_R_X256)
+# Rebuild when CPU_MHZ changes.
+CPU_MHZ_STAMP := $(BUILD)/cpu_mhz.$(CPU_MHZ)
+$(CPU_MHZ_STAMP):
+	@mkdir -p $(BUILD)
+	@rm -f $(BUILD)/cpu_mhz.*
+	@touch $@
+
 sim: $(SIM_BIN)
 
 # ysyxSoCFull.v is generated from the ysyxSoC Chisel sources and not tracked there.
 $(YSYXSOC_HOME)/build/ysyxSoCFull.v: $(shell find $(YSYXSOC_HOME)/src -name '*.scala')
 	timeout 1800 $(MAKE) -C $(YSYXSOC_HOME) verilog
 
-$(SIM_BIN): $(RTL_SRCS) $(SIM_RTL) $(SOC_SRCS) $(CXX_SRCS) $(CXX_HDRS) Makefile
+$(SIM_BIN): $(RTL_SRCS) $(SIM_RTL) $(SOC_SRCS) $(CXX_SRCS) $(CXX_HDRS) Makefile $(CPU_MHZ_STAMP)
 	@mkdir -p $(SIM_DIR)
 	verilator $(VFLAGS) --Mdir $(SIM_DIR) $(RTL_SRCS) $(SIM_RTL) $(SOC_SRCS) $(CXX_SRCS) -o $(SIM_BIN)
 	@touch $(SIM_BIN)
