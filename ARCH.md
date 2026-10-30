@@ -93,3 +93,18 @@ devices are marked skip and the REF state is synced from the DUT.
   `make nvboard` / `make run-nvboard IMG=...` build and run the interactive NVBoard version.
 * `make test-mem [MEM_KIB=N]` runs mem-test over PSRAM and SDRAM (the full sweep takes hours);
   `make test-rtthread` boots RT-Thread and runs a command typed over UART.
+
+## Performance and calibration
+
+* Sim-only counters (`--perf`): retired instructions by class with their cycles, fetch latency,
+  load/store latency by region, icache hits, misses and miss penalty. Retired instructions carry
+  a class tag that synthesis removes as unused; handshakes reach the harness through SimHook.
+* ysyxSoC's APB and AXI delayers stretch device latency by r = CPU_MHZ / 100 (8-bit fixed point),
+  so a transaction or burst beat the device returns k cycles after t0 arrives k * r cycles after it.
+  `CPU_MHZ` (Makefile, default 715 = synthesized fmax) and AM's `MTIME_PER_US` must agree.
+* SDRAM uses the AXI controller so icache refills are single INCR bursts.
+* icache: 16 B blocks, 4 sets, 2 ways, LRU, chosen with cachesim (`tools/`, data in `dse/icache.md`).
+  `--itrace FILE[.zst]` writes the fetch trace; cachesim reproduces the RTL's hit count exactly.
+  Shapes can be overridden with `SIM_DEFINES`/`SYN_DEFINES` (`ICACHE_BLOCK_BYTES`, `ICACHE_SETS`,
+  `ICACHE_WAYS`).
+* `make microbench [MB_SIZE=test|train]` runs microbench with counters.
