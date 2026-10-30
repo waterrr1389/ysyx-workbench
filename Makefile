@@ -27,6 +27,24 @@ sim: $(SIM_BIN)
 $(SIM_BIN): $(RTL_SRCS) $(SIM_RTL) $(SOC_SRCS) $(CXX_SRCS) $(CXX_HDRS) Makefile
 	@mkdir -p $(SIM_DIR)
 	verilator $(VFLAGS) --Mdir $(SIM_DIR) $(RTL_SRCS) $(SIM_RTL) $(SOC_SRCS) $(CXX_SRCS) -o $(SIM_BIN)
+	@touch $(SIM_BIN)
+
+# Run one raw image. BOOT selects where the image is placed; DIFFTEST=0 disables the reference model.
+IMG        ?=
+BOOT       ?= mrom
+DIFFTEST   ?= 1
+MAX_CYCLES ?= 500000000
+SIM_ARGS   := --$(BOOT) $(IMG) --max-cycles $(MAX_CYCLES) $(if $(filter 1,$(DIFFTEST)),--difftest)
+
+run-img: $(SIM_BIN)
+	timeout 1800 $(SIM_BIN) $(SIM_ARGS)
+
+AM_KERNELS_HOME ?= $(YSYX_HOME)/deps/am-kernels
+CPU_TESTS := $(AM_KERNELS_HOME)/tests/cpu-tests
+
+# All am-kernels cpu-tests on ysyxSoC (DiffTest on by default).
+test-cpu: $(SIM_BIN)
+	scripts/test-cpu.sh $(CPU_TESTS)
 
 # Lint only the core, with all warnings.
 lint:
@@ -35,4 +53,4 @@ lint:
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: sim lint clean
+.PHONY: sim lint clean run-img test-cpu
