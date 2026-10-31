@@ -122,7 +122,7 @@ module LSU
     bus_req.aw.size  = size_of(q.mem_op);
     bus_req.aw.burst = BURST_INCR;
     bus_req.w_valid  = w_pend;
-    bus_req.w.data   = q.store_data << {off, 3'b0};
+    bus_req.w.data   = q.store_data;
     bus_req.w.strb   = strb_of(q.mem_op, off);
     bus_req.w.last   = 1'b1;
     // B and R are accepted only after their requests are fully sent.
