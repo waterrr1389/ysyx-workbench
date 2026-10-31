@@ -29,6 +29,10 @@ static riscv32_difftest_state_t export_dut_state() {
     state.gpr[reg_idx] = read_gpr(reg_idx);
   }
   state.pc = top->pc;
+  state.mstatus = top->mstatus;
+  state.mtvec = top->mtvec;
+  state.mepc = top->mepc;
+  state.mcause = top->mcause;
   return state;
 }
 
