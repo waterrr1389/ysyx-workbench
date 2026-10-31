@@ -5,6 +5,7 @@
 #include "sim/sim_main.h"
 #include "difftest/difftest.h"
 
+#include <string.h>
 #include <time.h>
 
 #define RTC_ADDR 0xa0000048u
@@ -83,6 +84,16 @@ void npc_trap(void) {
   sim = false;
 }
 
+// reason points into Verilator's DPI wrapper stack and is dead once this call returns,
+// while npc_state.reason is read at exit. Hand npc_abort a string with static storage,
+// and add every reason WBU.sv can raise to this table.
 void npc_abort_at(const char* reason) {
-  npc_abort(reason, current_pc);
+  static const char* const known[] = {"illegal-inst", "fetch-fault", "bus-error"};
+  for (const char* k : known) {
+    if (strcmp(reason, k) == 0) {
+      npc_abort(k, current_pc);
+      return;
+    }
+  }
+  npc_abort("unknown", current_pc);
 }
