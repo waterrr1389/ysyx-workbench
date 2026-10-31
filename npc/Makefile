@@ -39,12 +39,16 @@ wave:
 	gtkwave waveform.fst
 
 run:
-	$(BUILD_DIR)/Vtop $(ARGS) $(IMG)
+	$(BUILD_DIR)/Vtop $(if $(WAVE),-w waveform.fst) $(ARGS) $(IMG)
+
+# Parallel cpu-tests on the current build; build with CONFIG=configs/difftest.toml to diff each test
+regress:
+	scripts/regress.sh $(TESTS)
 
 gdb:
 	gdb $(BUILD_DIR)/Vtop
 
-.PHONY:  sim run clean wave lint
+.PHONY:  sim run clean wave lint regress
 
 clean: 
 	@rm -rf $(BUILD_DIR)

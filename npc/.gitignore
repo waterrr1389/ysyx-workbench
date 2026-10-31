@@ -10,6 +10,9 @@
 !*.sby
 !*.cc
 !*.cpp
+!*.sh
+!*.toml
+!*.py
 !.gitignore
 !README.md
 !AGENTS.md
