@@ -23,7 +23,7 @@ static uint64_t host_time_us(void) {
 static int popcount4(uint8_t mask) {
   int count = 0;
 #if NPC_DIFFTEST
-  difftest_note_store(addr);
+  difftest_note_store(addr, mask);
 #endif
   for (int i = 0; i < 4; i++) {
     if ((mask & (1u << i)) != 0) {
@@ -59,7 +59,7 @@ void pmem_write(int waddr, int wdata, char wmask) {
 #endif
 
 #if NPC_DIFFTEST
-  difftest_note_store(addr);
+  difftest_note_store(addr, mask);
 #endif
   for (int i = 0; i < 4; i++) {
     if ((mask & (1u << i)) != 0) {

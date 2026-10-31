@@ -82,12 +82,17 @@ static bool same_state(const riscv32_difftest_state_t *ref, const riscv32_diffte
 static bool skip_pending = false;
 static bool store_pending = false;
 static word_t store_addr = 0;
+static word_t store_bytes = 0;  // byte mask of the written lanes, expanded to bits
 
 void difftest_skip_ref(void) { skip_pending = true; }
 
-void difftest_note_store(word_t addr) {
+void difftest_note_store(word_t addr, uint8_t mask) {
   store_pending = true;
   store_addr = addr & ~0x3u;
+  store_bytes = 0;
+  for (int i = 0; i < 4; i++) {
+    if (mask & (1u << i)) store_bytes |= 0xffu << (i * 8);
+  }
 }
 
 void init_difftest(const char *ref_so_file, long img_size) {
@@ -122,13 +127,14 @@ void difftest_step(vaddr_t pc, vaddr_t npc) {
   }
 
   // A wrong store shows up in registers only when it is loaded back, so the
-  // stored word is compared right away.
+  // written bytes are compared right away. Bytes outside the mask are never
+  // initialised alike on both sides, so they are not compared.
   if (store_pending) {
     store_pending = false;
     word_t ref_word = 0;
     reference->copy_memory_from_reference(store_addr, &ref_word, sizeof(ref_word));
     word_t dut_word = host_pmem_read(store_addr, 4);
-    if (ref_word != dut_word) {
+    if ((ref_word & store_bytes) != (dut_word & store_bytes)) {
       fprintf(stderr, "\nDiffTest store mismatch after pc = " FMT_WORD ": mem[" FMT_WORD
                       "] ref=" FMT_WORD " dut=" FMT_WORD "\n",
               pc, store_addr, ref_word, dut_word);
