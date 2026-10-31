@@ -1,57 +1,29 @@
-# AXI4-Lite formal checks of the memory path, run with SymbiYosys.
-# Usage: make -C npc/formal [sram|arbiter|xbar|ifu|lsu|uart]  (default: all six)
+# AXI4 formal checks of the bus masters and the memory system, run with SymbiYosys.
+# Usage: make -C npc/formal [bus|ifu|lsu]  (default: all three)
+#        add TASKS=prove or TASKS=cover to run one task
 # Needs sby, yosys, yices and sv2v.
-# Each job runs its bmc, cover and prove tasks; add TASKS=prove to pick some.
 BUILD_DIR := build
-JOBS := sram arbiter xbar ifu lsu uart
+JOBS := bus ifu lsu
 TASKS ?=
+RTL := ../vsrc
+
+PKG := $(RTL)/npc_pkg.sv axi_props.sv
+bus_SRCS := $(RTL)/Arbiter.sv $(RTL)/Xbar.sv $(RTL)/SRAM.sv $(RTL)/UART.sv bus_check.sv
+ifu_SRCS := $(RTL)/IFU.sv ifu_check.sv
+lsu_SRCS := $(RTL)/LSU.sv lsu_check.sv
 
 all: $(JOBS)
 
-# Yosys cannot execute DPI-C: memory reads become a free value and writes are
-# dropped. The check fails loudly if SRAM.v changes and a call slips through.
-$(BUILD_DIR)/SRAM.v: ../vsrc/SRAM.v Makefile
+# Yosys reads neither packages nor packed structs; sv2v lowers each job to one Verilog file.
+$(BUILD_DIR)/%.v: $(PKG) Makefile
 	@mkdir -p $(BUILD_DIR)
-	sed -e 's/import "DPI-C" function int pmem_read.*/(* anyseq *) wire [DATA_LEN-1:0] f_mem_rdata;/' \
-	    -e '/import "DPI-C" function void pmem_write/d' \
-	    -e 's/pmem_read(araddr)/f_mem_rdata/' \
-	    -e 's/pmem_write([^;]*);/;/' \
-	    $< > $@
-	@if grep -n 'pmem_\|DPI-C' $@; then echo "DPI-C left in $@" >&2; rm -f $@; exit 1; fi
+	sv2v -DFORMAL --exclude=Assert $(PKG) $($*_SRCS) > $@
 
-# The Yosys parser rejects an action block on an immediate assertion.
-# Keep the assertion itself and drop its `else $fatal` reporting.
-$(BUILD_DIR)/IFU.v $(BUILD_DIR)/LSU.v: $(BUILD_DIR)/%.v: ../vsrc/%.v Makefile
-	@mkdir -p $(BUILD_DIR)
-	sed -e '/^[[:space:]]*assert (.*)[[:space:]]*$$/s/$$/;/' \
-	    -e '/else \$$fatal/d' \
-	    $< > $@
-	@if grep -n 'fatal' $@; then echo "\$$fatal left in $@" >&2; rm -f $@; exit 1; fi
+$(BUILD_DIR)/bus.v: $(bus_SRCS)
+$(BUILD_DIR)/ifu.v: $(ifu_SRCS)
+$(BUILD_DIR)/lsu.v: $(lsu_SRCS)
 
-# The Yosys parser lacks SystemVerilog assignment patterns; sv2v lowers them.
-# Yosys also cannot resolve hierarchical references, so the converted copy
-# exports its route state on an extra f_state port for the induction
-# invariants in arbiter_axil.sv.
-$(BUILD_DIR)/Arbiter.v: ../vsrc/Arbiter.sv Makefile
-	@mkdir -p $(BUILD_DIR)
-	sv2v $< | sed -e 's/^module Arbiter (/module Arbiter (f_state,/' \
-	    -e 's/^endmodule/output wire [1:0] f_state; assign f_state = state; endmodule/' > $@
-	@grep -q 'assign f_state = state;' $@ || { echo "f_state not exported in $@" >&2; rm -f $@; exit 1; }
-
-# The same reason exports the Xbar state, route and error flag.
-$(BUILD_DIR)/Xbar.v: ../vsrc/Xbar.v Makefile
-	@mkdir -p $(BUILD_DIR)
-	sed -e 's/^module Xbar (/module Xbar (output [1:0] f_state, output [1:0] f_route, output f_err_resp,/' \
-	    -e 's/^endmodule/assign f_state = state; assign f_route = route; assign f_err_resp = err_resp; endmodule/' $< > $@
-	@grep -q 'assign f_state = state;' $@ || { echo "f_state not exported in $@" >&2; rm -f $@; exit 1; }
-
-sram: $(BUILD_DIR)/SRAM.v
-arbiter: $(BUILD_DIR)/Arbiter.v
-xbar: $(BUILD_DIR)/Xbar.v
-ifu: $(BUILD_DIR)/IFU.v
-lsu: $(BUILD_DIR)/LSU.v
-
-$(JOBS):
+$(JOBS): %: $(BUILD_DIR)/%.v
 	sby -f --prefix $(BUILD_DIR)/$@ $@.sby $(TASKS)
 
 clean:
