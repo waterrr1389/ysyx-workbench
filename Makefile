@@ -84,7 +84,7 @@ CPU_TESTS := $(AM_KERNELS_HOME)/tests/cpu-tests
 
 # All am-kernels cpu-tests on ysyxSoC (DiffTest on by default).
 test-cpu: $(SIM_BIN)
-	scripts/test-cpu.sh $(CPU_TESTS)
+	scripts/test-cpu.sh $(SIM_BIN) $(CPU_TESTS)
 
 # The handout's PSRAM and SDRAM memory tests; MEM_KIB limits the tested size (default: all).
 MEM_KIB ?=
