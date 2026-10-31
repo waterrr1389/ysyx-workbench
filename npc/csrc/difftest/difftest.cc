@@ -36,53 +36,63 @@ static riscv32_difftest_state_t export_dut_state() {
   return state;
 }
 
-static void dump_regs(const riscv32_difftest_state_t *ref,
-                      const riscv32_difftest_state_t *dut) {
+// Every field compared, in report order. CSRs are included because the DUT
+// exports its real values.
+struct Field {
+  const char *name;
+  uint32_t riscv32_difftest_state_t::*member;
+};
+static const Field csr_fields[] = {
+  {"pc", &riscv32_difftest_state_t::pc},
+  {"mstatus", &riscv32_difftest_state_t::mstatus},
+  {"mtvec", &riscv32_difftest_state_t::mtvec},
+  {"mepc", &riscv32_difftest_state_t::mepc},
+  {"mcause", &riscv32_difftest_state_t::mcause},
+};
+
+static void report_mismatch(vaddr_t pc, const riscv32_difftest_state_t *ref,
+                            const riscv32_difftest_state_t *dut) {
+  fprintf(stderr, "\nDiffTest mismatch after pc = " FMT_WORD ", inst = 0x%08x\n",
+          pc, host_pmem_read(pc, 4));
+  for (const Field &f : csr_fields) {
+    uint32_t r = ref->*f.member, d = dut->*f.member;
+    fprintf(stderr, "%-7s ref=" FMT_WORD " dut=" FMT_WORD "%s\n", f.name, r, d,
+            r == d ? "" : "  <-- mismatch");
+  }
   for (size_t i = 0; i < RISCV32_DIFFTEST_GPR_COUNT; i++) {
-    fprintf(stderr, "%-3s ref=" FMT_WORD " dut=" FMT_WORD "%s\n",
-            reg_names[i], ref->gpr[i], dut->gpr[i],
-            ref->gpr[i] == dut->gpr[i] ? "" : "  <-- mismatch");
+    fprintf(stderr, "%-7s ref=" FMT_WORD " dut=" FMT_WORD "%s\n", reg_names[i], ref->gpr[i],
+            dut->gpr[i], ref->gpr[i] == dut->gpr[i] ? "" : "  <-- mismatch");
   }
-}
-
-static void report_mismatch(vaddr_t pc, vaddr_t npc, const riscv32_difftest_state_t *ref,
-                            const riscv32_difftest_state_t *dut, int mismatch_idx) {
-  word_t inst = host_pmem_read(pc, 4);
-
-  fprintf(stderr, "\nDiffTest mismatch at pc = " FMT_WORD ", npc = " FMT_WORD
-                  ", inst = 0x%08x\n",
-          pc, npc, inst);
-
-  if (ref->pc != dut->pc) {
-    fprintf(stderr, "PC mismatch: ref.pc = " FMT_WORD ", dut.pc = " FMT_WORD "\n",
-            ref->pc, dut->pc);
-  }
-
-  if (mismatch_idx >= 0) {
-    fprintf(stderr, "First mismatch: %s, ref = " FMT_WORD ", dut = " FMT_WORD "\n",
-            reg_names[mismatch_idx], ref->gpr[mismatch_idx], dut->gpr[mismatch_idx]);
-  }
-
-  dump_regs(ref, dut);
   fflush(stderr);
 }
 
-static bool checkregs(const riscv32_difftest_state_t *ref,
-                      const riscv32_difftest_state_t *dut, vaddr_t pc, vaddr_t npc) {
-  if (ref->pc != dut->pc) {
-    report_mismatch(pc, npc, ref, dut, -1);
-    npc_abort("difftest", pc);
-    return false;
+static bool same_state(const riscv32_difftest_state_t *ref, const riscv32_difftest_state_t *dut) {
+  for (const Field &f : csr_fields) {
+    if (ref->*f.member != dut->*f.member) return false;
   }
-
   for (size_t i = 0; i < RISCV32_DIFFTEST_GPR_COUNT; i++) {
-    if (ref->gpr[i] != dut->gpr[i]) {
-      report_mismatch(pc, npc, ref, dut, static_cast<int>(i));
-      npc_abort("difftest", pc);
-      return false;
-    }
+    if (ref->gpr[i] != dut->gpr[i]) return false;
   }
   return true;
+}
+
+// Set by device accesses and stores during the instruction about to commit.
+// The core has one instruction in flight, so whatever touched the bus since the
+// last commit belongs to the next one.
+static bool skip_pending = false;
+static bool store_pending = false;
+static word_t store_addr = 0;
+static word_t store_bytes = 0;  // byte mask of the written lanes, expanded to bits
+
+void difftest_skip_ref(void) { skip_pending = true; }
+
+void difftest_note_store(word_t addr, uint8_t mask) {
+  store_pending = true;
+  store_addr = addr & ~0x3u;
+  store_bytes = 0;
+  for (int i = 0; i < 4; i++) {
+    if (mask & (1u << i)) store_bytes |= 0xffu << (i * 8);
+  }
 }
 
 void init_difftest(const char *ref_so_file, long img_size) {
@@ -98,9 +108,37 @@ void difftest_step(vaddr_t pc, vaddr_t npc) {
     return;
   }
 
-  riscv32_difftest_state_t ref_state = reference->step();
   riscv32_difftest_state_t dut_state = export_dut_state();
   dut_state.pc = npc;
 
-  checkregs(&ref_state, &dut_state, pc, npc);
+  // REF cannot reproduce a device access; take the DUT's result instead.
+  if (skip_pending) {
+    skip_pending = false;
+    store_pending = false;
+    reference->set_state(dut_state);
+    return;
+  }
+
+  riscv32_difftest_state_t ref_state = reference->step();
+  if (!same_state(&ref_state, &dut_state)) {
+    report_mismatch(pc, &ref_state, &dut_state);
+    npc_abort("difftest", pc);
+    return;
+  }
+
+  // A wrong store shows up in registers only when it is loaded back, so the
+  // written bytes are compared right away. Bytes outside the mask are never
+  // initialised alike on both sides, so they are not compared.
+  if (store_pending) {
+    store_pending = false;
+    word_t ref_word = 0;
+    reference->copy_memory_from_reference(store_addr, &ref_word, sizeof(ref_word));
+    word_t dut_word = host_pmem_read(store_addr, 4);
+    if ((ref_word & store_bytes) != (dut_word & store_bytes)) {
+      fprintf(stderr, "\nDiffTest store mismatch after pc = " FMT_WORD ": mem[" FMT_WORD
+                      "] ref=" FMT_WORD " dut=" FMT_WORD "\n",
+              pc, store_addr, ref_word, dut_word);
+      npc_abort("difftest-store", pc);
+    }
+  }
 }

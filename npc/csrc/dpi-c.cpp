@@ -3,6 +3,7 @@
 #include "sim/dpi-c.h"
 #include "sim/pmem.h"
 #include "sim/sim_main.h"
+#include "difftest/difftest.h"
 
 #include <time.h>
 
@@ -21,6 +22,9 @@ static uint64_t host_time_us(void) {
 #if NPC_MTRACE
 static int popcount4(uint8_t mask) {
   int count = 0;
+#if NPC_DIFFTEST
+  difftest_note_store(addr, mask);
+#endif
   for (int i = 0; i < 4; i++) {
     if ((mask & (1u << i)) != 0) {
       count++;
@@ -35,11 +39,13 @@ int pmem_read(int raddr) {
 #if NPC_MTRACE
   Log("mtrace: read addr = " FMT_WORD ", len = %d", addr, 4);
 #endif
-  if (addr == RTC_ADDR) {
-    rtc_us = host_time_us();
-    return (int)(uint32_t)rtc_us;
+  if (addr == RTC_ADDR || addr == RTC_ADDR + 4) {
+#if NPC_DIFFTEST
+    difftest_skip_ref();
+#endif
+    if (addr == RTC_ADDR) rtc_us = host_time_us();
+    return (int)(uint32_t)(addr == RTC_ADDR ? rtc_us : rtc_us >> 32);
   }
-  if (addr == RTC_ADDR + 4) return (int)(uint32_t)(rtc_us >> 32);
   return (int)host_pmem_read(addr, 4);
 }
 
@@ -52,6 +58,9 @@ void pmem_write(int waddr, int wdata, char wmask) {
       addr, popcount4(mask), data, mask);
 #endif
 
+#if NPC_DIFFTEST
+  difftest_note_store(addr, mask);
+#endif
   for (int i = 0; i < 4; i++) {
     if ((mask & (1u << i)) != 0) {
       word_t byte_addr = addr + (word_t)i;
@@ -59,6 +68,13 @@ void pmem_write(int waddr, int wdata, char wmask) {
       host_pmem_write(byte_addr, 1, byte_data);
     }
   }
+}
+
+void uart_putc(char c) {
+  putchar(c);
+#if NPC_DIFFTEST
+  difftest_skip_ref();
+#endif
 }
 
 void npc_trap(void) {
