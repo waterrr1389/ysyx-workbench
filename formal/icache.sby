@@ -1,0 +1,28 @@
+# The icache is checked in a reduced shape (8 B blocks, 2 sets, 2 ways): the logic is the same as in
+# the full shape, with far fewer states.
+[tasks]
+prove
+bmc
+cover
+
+[options]
+prove: mode prove
+bmc: mode bmc
+bmc: depth 20
+cover: mode cover
+cover: depth 20
+
+[engines]
+prove: abc pdr
+bmc: smtbmc yices
+cover: smtbmc yices
+
+[script]
+read_verilog -sv icache.v
+read_verilog -formal icache_check.v
+chparam -set BLOCK_BYTES 8 -set SETS 2 -set WAYS 2 ysyx_00000000_ICache
+prep -top icache_check
+
+[files]
+icache.v
+icache_check.v
