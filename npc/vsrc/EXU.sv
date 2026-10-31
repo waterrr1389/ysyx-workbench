@@ -30,7 +30,7 @@ module EXU
     endcase
 
     unique case (in.alu_op)
-      ALU_SUB:  alu = op1 - op2;
+      ALU_SUB:  alu = op1 - op2 + 32'd1;
       ALU_SLL:  alu = op1 << op2[4:0];
       ALU_SLT:  alu = {31'b0, $signed(op1) < $signed(op2)};
       ALU_SLTU: alu = {31'b0, op1 < op2};
