@@ -23,7 +23,7 @@ VFLAGS += --trace-fst -CFLAGS -DTRACE
 endif
 
 # Core clock the ysyxSoC delayers calibrate device latency to (devices run at 100 MHz).
-CPU_MHZ ?= 715
+CPU_MHZ ?= 813
 DELAY_R_X256 := $(shell echo $$(( $(CPU_MHZ) * 256 / 100 )))
 # Extra +define+ options, e.g. an icache shape: SIM_DEFINES=+define+ICACHE_SETS=8
 SIM_DEFINES ?=
