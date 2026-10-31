@@ -11,7 +11,10 @@ void open_itrace(const std::string &path);
 // Counters start from zero at the cycle given here (end of reset).
 void start(uint64_t cycle);
 void tick(uint64_t cycle);  // current cycle, called before each clock edge
-void retire(uint64_t cycle, int cls);
+void retire(uint64_t cycle, int cls, uint32_t pc);
+// Starts writing every retired branch and jump as two little-endian uint32: its PC, and the PC of the
+// next retired instruction with bit 0 set for conditional branches. A .zst path is compressed.
+void open_btrace(const std::string &path);
 void report(uint64_t cycle);
 void close();
 

@@ -175,7 +175,7 @@ struct Options {
   bool trace_gpio = false;
   std::vector<uint8_t> ps2;
   uint64_t ps2_at = 0;
-  std::string mrom, flash, wave, itrace, uart_input, uart_after, uart_exit;
+  std::string mrom, flash, wave, itrace, btrace, uart_input, uart_after, uart_exit;
   int uart_bit = 16;
   bool perf = false;
   bool difftest = false;
@@ -200,6 +200,7 @@ void usage(const char *prog) {
           "usage: %s [--mrom IMG] [--flash IMG] [--difftest] [--max-cycles N] [--wave FILE]\n"
           "          [--uart-input STR [--uart-after PROMPT]] [--uart-bit CYCLES]\n"
           "          [--perf] [--itrace FILE]  counters at exit; fetch address trace for cachesim\n"
+          "          [--btrace FILE]  retired branch and jump trace for branchsim\n"
           "          [--uart-exit STR]  end successfully once STR is output after the input\n"
           "          [--switches V] [--trace-gpio] [--ps2 HEX,HEX,... [--ps2-at CYCLE]]\n"
           "          [--vga-dump FILE.ppm [--vga-skip FRAMES]]\n"
@@ -222,6 +223,7 @@ Options parse(int argc, char **argv) {
     else if (a == "--wave") o.wave = next();
     else if (a == "--perf") o.perf = true;
     else if (a == "--itrace") o.itrace = next();
+    else if (a == "--btrace") o.btrace = next();
     else if (a == "--uart-input") o.uart_input = unescape(next());
     else if (a == "--uart-after") o.uart_after = unescape(next());
     else if (a == "--uart-exit") o.uart_exit = unescape(next());
@@ -331,6 +333,7 @@ int main(int argc, char **argv) {
   cycle = 0;
   perf::start(cycle);
   if (!opt.itrace.empty()) perf::open_itrace(opt.itrace);
+  if (!opt.btrace.empty()) perf::open_btrace(opt.btrace);
 
   if (opt.difftest) difftest::init(RESET_PC);
 
@@ -365,7 +368,7 @@ int main(int argc, char **argv) {
     }
     last_retire = cycle;
     for (const Retire &r : retired) {
-      perf::retire(cycle, r.cls);
+      perf::retire(cycle, r.cls, r.pc);
       if (opt.difftest && difftest::pc() != r.pc) {
         fprintf(stderr, "difftest: pc mismatch, dut 0x%08x ref 0x%08x\n", r.pc, difftest::pc());
         status = 1;

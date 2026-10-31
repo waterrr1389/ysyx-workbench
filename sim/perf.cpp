@@ -57,14 +57,20 @@ void flush_itrace() {
 
 bool itrace_piped = false;
 
-void open_itrace(const std::string &path) {
+FILE *open_trace(const std::string &path, bool &piped) {
   // Traces of long runs are large; a .zst name compresses on the fly.
-  if (path.size() > 4 && path.compare(path.size() - 4, 4, ".zst") == 0) {
-    itrace = popen(("zstd -q -f -o '" + path + "'").c_str(), "w");
-    itrace_piped = true;
-  } else {
-    itrace = fopen(path.c_str(), "wb");
-  }
+  piped = path.size() > 4 && path.compare(path.size() - 4, 4, ".zst") == 0;
+  return piped ? popen(("zstd -q -f -o '" + path + "'").c_str(), "w") : fopen(path.c_str(), "wb");
+}
+
+FILE *btrace = nullptr;
+bool btrace_piped = false;
+std::vector<uint32_t> btrace_buf;
+bool cf_pending = false;
+uint32_t cf_pc = 0, cf_is_branch = 0;
+
+void open_itrace(const std::string &path) {
+  itrace = open_trace(path, itrace_piped);
   if (!itrace) perror(path.c_str());
 }
 
@@ -72,8 +78,26 @@ void start(uint64_t cycle) {
   now = start_cycle = last_retire = cycle;
 }
 
-void retire(uint64_t cycle, int cls) {
+void open_btrace(const std::string &path) {
+  btrace = open_trace(path, btrace_piped);
+  if (!btrace) perror(path.c_str());
+}
+
+void retire(uint64_t cycle, int cls, uint32_t pc) {
   if (cls < 0 || cls >= NUM_CLASSES) return;
+  if (btrace) {
+    if (cf_pending) {
+      btrace_buf.push_back(cf_pc);
+      btrace_buf.push_back(pc | cf_is_branch);
+      if (btrace_buf.size() >= (1u << 16)) {
+        fwrite(btrace_buf.data(), 4, btrace_buf.size(), btrace);
+        btrace_buf.clear();
+      }
+    }
+    cf_pending = cls == 1 || cls == 2;  // IC_BRANCH, IC_JUMP
+    cf_pc = pc;
+    cf_is_branch = cls == 1;
+  }
   class_count[cls]++;
   class_cycles[cls] += cycle - last_retire;
   last_retire = cycle;
@@ -109,6 +133,11 @@ void report(uint64_t cycle) {
 void close() {
   flush_itrace();
   if (itrace) itrace_piped ? pclose(itrace) : fclose(itrace);
+  if (btrace) {
+    fwrite(btrace_buf.data(), 4, btrace_buf.size(), btrace);
+    btrace_piped ? pclose(btrace) : fclose(btrace);
+  }
+  btrace = nullptr;
   itrace = nullptr;
 }
 
