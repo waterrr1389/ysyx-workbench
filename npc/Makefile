@@ -14,7 +14,8 @@ CONFIG_HEADER := $(abspath $(BUILD_DIR)/generated/$(CONFIG_NAME)/npc_config.h)
 
 INC_PATH += $(NPC_HOME)/include $(NEMU_HOME)/include $(dir $(CONFIG_HEADER))
 INCFLAGS += $(addprefix -CFLAGS -I, $(INC_PATH))
-VSRCS = $(shell find $(abspath ./vsrc) -type f \( -name "*.v" -o -name "*.sv" \))
+# The package must be compiled before the modules that import it.
+VSRCS = $(abspath ./vsrc/npc_pkg.sv) $(filter-out %/npc_pkg.sv, $(shell find $(abspath ./vsrc) -type f \( -name "*.v" -o -name "*.sv" \)))
 CSRCS = $(shell find $(abspath ./csrc) $(abspath ./trace) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 CSRCS += $(NEMU_HOME)/tools/difftest-client/reference.cc
 IMG := ./dummy.bin

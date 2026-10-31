@@ -66,3 +66,7 @@ void npc_trap(void) {
   npc_state.halt_pc = current_pc;
   sim = false;
 }
+
+void npc_abort_at(const char* reason) {
+  npc_abort(reason, current_pc);
+}

@@ -24,7 +24,7 @@
 #define RESET_CYCLES    5
 #define NOP_INST        0x00000013u
 #define A0_REG_INDEX    10u
-#define GPR_SCOPE_NAME  "TOP.top.rf0"
+#define GPR_SCOPE_NAME  "TOP.top.u_rf"
 
 Vtop* top;
 VerilatedContext* contextp;

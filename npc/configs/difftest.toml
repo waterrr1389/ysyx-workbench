@@ -1,0 +1,7 @@
+[trace]
+instruction = false
+function = false
+memory = false
+
+[difftest]
+enable = true
