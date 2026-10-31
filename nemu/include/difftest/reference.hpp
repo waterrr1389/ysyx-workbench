@@ -21,6 +21,7 @@ public:
   void initialize(int port, uint32_t reset_vector, const void *image, size_t image_size,
                   const riscv32_difftest_state_t &initial_state);
   void copy_memory_to_reference(uint32_t address, const void *data, size_t size);
+  void copy_memory_from_reference(uint32_t address, void *data, size_t size);
   void set_state(const riscv32_difftest_state_t &state);
   riscv32_difftest_state_t get_state();
   riscv32_difftest_state_t step();

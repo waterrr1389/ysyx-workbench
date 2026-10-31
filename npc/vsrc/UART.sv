@@ -1,4 +1,5 @@
-// Write-only transmit register: the byte on lane 0 of every write is printed.
+// Write-only transmit register: the byte on lane 0 of every write goes to the
+// harness, which prints it.
 // The Xbar answers reads of this range itself, so the read channels stay idle.
 module UART
   import npc_pkg::*;
@@ -8,6 +9,10 @@ module UART
   input  axi_req_t req,
   output axi_rsp_t rsp
 );
+
+`ifndef FORMAL
+  import "DPI-C" function void uart_putc(input byte c);
+`endif
 
   logic  b_valid;
   logic [3:0] b_id;
@@ -30,7 +35,9 @@ module UART
       if (take) begin
         b_valid <= 1'b1;
         b_id    <= req.aw.id;
-        if (req.w.strb[0]) $write("%c", req.w.data[7:0]);
+`ifndef FORMAL
+        if (req.w.strb[0]) uart_putc(req.w.data[7:0]);
+`endif
       end else if (req.b_ready) begin
         b_valid <= 1'b0;
       end

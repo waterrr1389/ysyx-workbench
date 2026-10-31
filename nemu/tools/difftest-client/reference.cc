@@ -68,6 +68,14 @@ void Riscv32DifftestReference::copy_memory_to_reference(uint32_t address, const 
   memory_copy_(address, const_cast<void *>(data), size, RISCV32_DIFFTEST_TO_REF);
 }
 
+void Riscv32DifftestReference::copy_memory_from_reference(uint32_t address, void *data,
+                                                          size_t size) {
+  if (data == nullptr && size != 0) {
+    fail("memory destination must not be null when size is nonzero");
+  }
+  memory_copy_(address, data, size, RISCV32_DIFFTEST_TO_DUT);
+}
+
 void Riscv32DifftestReference::set_state(const riscv32_difftest_state_t &state) {
   riscv32_difftest_state_t copy = state;
   register_copy_(&copy, RISCV32_DIFFTEST_TO_REF);
