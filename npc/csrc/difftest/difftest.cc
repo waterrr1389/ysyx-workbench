@@ -67,18 +67,14 @@ static bool checkregs(const riscv32_difftest_state_t *ref,
                       const riscv32_difftest_state_t *dut, vaddr_t pc, vaddr_t npc) {
   if (ref->pc != dut->pc) {
     report_mismatch(pc, npc, ref, dut, -1);
-    npc_state.state = NPC_ABORT;
-    npc_state.halt_pc = pc;
-    sim = false;
+    npc_abort("difftest", pc);
     return false;
   }
 
   for (size_t i = 0; i < RISCV32_DIFFTEST_GPR_COUNT; i++) {
     if (ref->gpr[i] != dut->gpr[i]) {
       report_mismatch(pc, npc, ref, dut, static_cast<int>(i));
-      npc_state.state = NPC_ABORT;
-      npc_state.halt_pc = pc;
-      sim = false;
+      npc_abort("difftest", pc);
       return false;
     }
   }

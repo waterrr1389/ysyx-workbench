@@ -18,6 +18,8 @@ struct NPCState {
   int state;
   uint32_t halt_pc;
   uint32_t halt_ret;
+  // Names why an aborted run stopped; NULL unless state is NPC_ABORT.
+  const char* reason;
 };
 
 extern Vtop* top;
@@ -34,5 +36,6 @@ void sim_init(void);
 void sim_exit(void);
 int sim_status(void);
 uint32_t read_gpr(uint32_t index);
+void npc_abort(const char* reason, uint32_t pc);
 
 #define FMT_WORD "0x%08" PRIx32

@@ -35,6 +35,14 @@ NPCState npc_state = { .state = NPC_STOP, .halt_pc = 0, .halt_ret = 0 };
 svScope gpr_scope = nullptr;
 static const char* img_file = NULL;
 static const char* elf_file = NULL;
+static const char* wave_file = NULL;
+// 0 disables the limit.
+static uint64_t max_cycles = 0;
+// A hung bus or a stuck stage shows up as cycles without a commit.
+static uint64_t watchdog_cycles = 1000000;
+static uint64_t cycles = 0;
+static uint64_t insts = 0;
+static uint64_t last_commit_cycle = 0;
 static char* inst_buf = NULL;
 static long img_size = 0;
 
@@ -44,6 +52,14 @@ static void init_npc_state() {
   npc_state.state = NPC_RUNNING;
   npc_state.halt_pc = 0;
   npc_state.halt_ret = 0;
+  npc_state.reason = NULL;
+}
+
+void npc_abort(const char* reason, uint32_t pc) {
+  npc_state.state = NPC_ABORT;
+  npc_state.halt_pc = pc;
+  npc_state.reason = reason;
+  sim = false;
 }
 
 static void init_gpr_scope() {
@@ -56,22 +72,28 @@ uint32_t read_gpr(uint32_t index) {
   return get_gpr(index);
 }
 
-static void print_trap_result() {
-  if (npc_state.state == NPC_END) {
-    npc_state.halt_ret = read_gpr(A0_REG_INDEX);
-    printf("npc: %s at pc = 0x%08x\n",
-        npc_state.halt_ret == 0
-            ? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN)
-            : ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED),
-        npc_state.halt_pc);
-  } else if (npc_state.state == NPC_ABORT) {
-    printf("npc: %s at pc = 0x%08x\n",
-        ANSI_FMT("ABORT", ANSI_FG_RED), npc_state.halt_pc);
+// Every run ends with exactly one line of this shape, so scripts can grep "npc: result=".
+static void print_summary() {
+  const char* result;
+  bool good = false;
+  switch (npc_state.state) {
+    case NPC_END:
+      npc_state.halt_ret = read_gpr(A0_REG_INDEX);
+      good = npc_state.halt_ret == 0;
+      result = good ? "good-trap" : "bad-trap";
+      break;
+    case NPC_ABORT: result = npc_state.reason; break;
+    case NPC_QUIT:  result = "quit"; good = true; break;
+    default:        result = "stopped"; break;
   }
+  printf("npc: result=%s%s%s pc=0x%08x cycles=%" PRIu64 " insts=%" PRIu64 " ipc=%.4f\n",
+      good ? ANSI_FG_GREEN : ANSI_FG_RED, result, ANSI_NONE, npc_state.halt_pc,
+      cycles, insts, cycles ? (double)insts / cycles : 0.0);
 }
 
 static void cleanup() {
-  tfp->close();
+  if (tfp) tfp->close();
+  delete tfp;
   delete top;
   delete contextp;
 #if NPC_ITRACE
@@ -145,7 +167,7 @@ static void trace_inst() {
 
 static void dump_wave() {
   contextp->timeInc(1);
-  tfp->dump(contextp->time());
+  if (tfp) tfp->dump(contextp->time());
 }
 
 // One cycle = exactly one posedge; outputs are settled on return.
@@ -163,11 +185,21 @@ bool step_one_cycle(void) {
     trace_inst();
   }
   tick();
+  cycles++;
+  if (commit) {
+    insts++;
+    last_commit_cycle = cycles;
+  }
 #if NPC_DIFFTEST
   if (commit && sim) {
     difftest_step(current_pc, top->pc);
   }
 #endif
+  if (sim && cycles - last_commit_cycle >= watchdog_cycles) {
+    npc_abort("watchdog", current_pc);
+  } else if (sim && max_cycles != 0 && cycles >= max_cycles) {
+    npc_abort("cycle-limit", current_pc);
+  }
   return commit;
 }
 
@@ -179,16 +211,19 @@ void step_one_inst(void) {
 void sim_init(void) {
   contextp = new VerilatedContext;
   top = new Vtop{contextp};
-  tfp = new VerilatedFstC;
-  Verilated::traceEverOn(true);
+  tfp = NULL;
+  Verilated::traceEverOn(wave_file != NULL);
 
 #if NPC_ITRACE
 	inst_buf = (char*)malloc(128);
 	Assert(inst_buf, "Failed to alloc memory for itarce buffer");
 #endif
 
-  top->trace(tfp, 99);
-  tfp->open("waveform.fst");
+  if (wave_file != NULL) {
+    tfp = new VerilatedFstC;
+    top->trace(tfp, 99);
+    tfp->open(wave_file);
+  }
 
   top->reset = 1;
   top->clk = 0;
@@ -210,7 +245,7 @@ void sim_init(void) {
 }
 
 void sim_exit(void) {
-  print_trap_result();
+  print_summary();
 #if NPC_ITRACE
   iRingBufferDump();
 #endif
@@ -234,11 +269,16 @@ int main(int argc, char** argv) {
   const struct option table[] = {
       {"batch", no_argument, NULL, 'b'},
       {"elf", required_argument, NULL, 'e'},
+      {"wave", required_argument, NULL, 'w'},
+      {"max-cycles", required_argument, NULL, 'c'},
+      {"watchdog", required_argument, NULL, 'd'},
       {0, 0, NULL, 0},
   };
+  const char* usage =
+      "Usage: %s [-b] [-e IMAGE.elf] [-w WAVE.fst] [--max-cycles N] [--watchdog N] IMAGE.bin\n";
 
   int opt = 0;
-  while ((opt = getopt_long(argc, argv, "be:", table, NULL)) != -1) {
+  while ((opt = getopt_long(argc, argv, "be:w:", table, NULL)) != -1) {
     switch (opt) {
     case 'b':
       sdb_set_batch_mode();
@@ -246,14 +286,23 @@ int main(int argc, char** argv) {
     case 'e':
       elf_file = optarg;
       break;
+    case 'w':
+      wave_file = optarg;
+      break;
+    case 'c':
+      max_cycles = strtoull(optarg, NULL, 0);
+      break;
+    case 'd':
+      watchdog_cycles = strtoull(optarg, NULL, 0);
+      break;
     default:
-      fprintf(stderr, "Usage: %s [-b] IMAGE.bin [-e IMAGE.elf]\n", argv[0]);
+      fprintf(stderr, usage, argv[0]);
       return 1;
     }
   }
 
   if (optind >= argc) {
-    fprintf(stderr, "Usage: %s [-b] IMAGE.bin [-e IMAGE.elf]\n", argv[0]);
+    fprintf(stderr, usage, argv[0]);
     return 1;
   }
 

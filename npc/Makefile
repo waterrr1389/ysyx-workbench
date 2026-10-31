@@ -39,7 +39,7 @@ wave:
 	gtkwave waveform.fst
 
 run:
-	$(BUILD_DIR)/Vtop $(ARGS) $(IMG)
+	$(BUILD_DIR)/Vtop $(if $(WAVE),-w waveform.fst) $(ARGS) $(IMG)
 
 gdb:
 	gdb $(BUILD_DIR)/Vtop
