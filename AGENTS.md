@@ -24,7 +24,7 @@ Git layout:
 - `make -C npc sim`: build the Verilator model. AM's NPC `run` target only invokes `make -C npc run` and never rebuilds the model, so rerun `sim` after RTL changes.
 - `make -C am-kernels/tests/cpu-tests ARCH=riscv32i-npc run ALL=dummy`: run a CPU test on NPC in batch mode with ELF symbols. `riscv32e-npc` also exists and builds for RV32E.
 - NPC DiffTest: set `[difftest] enable = true` in an `npc/configs/*.toml` and pass it as `CONFIG=`. NEMU must first be built as a shared library (`TARGET_SHARE` in menuconfig), which produces `nemu/build/riscv32-nemu-interpreter-so`.
-- `make -C npc/formal`: AXI4-Lite formal checks of the NPC memory path; see `npc/AGENTS.md`.
+- `make -C npc/formal`: AXI4 formal checks of the NPC memory path; see `npc/AGENTS.md`.
 - `make -C am-kernels/tests/cpu-tests ARCH=riscv32-nemu -j 1 run`: run the full CPU regression suite on NEMU.
 - `make -C am-kernels/tests/cpu-tests ARCH=riscv32-nemu -j 1 run ALL=dummy`: run one CPU test; replace `dummy` with a filename stem from `tests/`.
 - `make -C am-kernels/kernels/yield-os ARCH=riscv32-nemu`: build the `yield-os` image without running it.
