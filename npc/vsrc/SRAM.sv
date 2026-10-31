@@ -16,8 +16,18 @@ module SRAM
   output axi_rsp_t rsp
 );
 
+`ifdef FORMAL
+  // The formal tools cannot call into C: reads return any value, writes vanish.
+  (* anyseq *) word_t any_rdata;
+  function automatic word_t pmem_read(input word_t raddr);
+    return any_rdata;
+  endfunction
+  task automatic pmem_write(input word_t waddr, input word_t wdata, input logic [7:0] wmask);
+  endtask
+`else
   import "DPI-C" function int pmem_read(input int raddr);
   import "DPI-C" function void pmem_write(input int waddr, input int wdata, input byte wmask);
+`endif
 
   logic [7:0] lfsr;
   logic [2:0] wait_cnt;          // cycles left before the next request is accepted

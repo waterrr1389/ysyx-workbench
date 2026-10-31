@@ -1,0 +1,19 @@
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+cover: mode cover
+cover: depth 24
+
+[engines]
+prove: abc pdr
+cover: smtbmc yices
+
+[script]
+read -formal bus.v
+prep -top bus_check
+
+[files]
+build/bus.v
