@@ -75,7 +75,12 @@ module ysyx_00000000_EXU
     end
   end
 
-  assign redirect_valid = fire && !exc.valid && actual != r.pred_next;
+  // Same as actual != pred_next, but the compares do not wait for the branch condition, which is the
+  // slowest signal here; it only selects between them.
+  wire pred_taken  = r.pred_next != seq_pc;
+  wire pred_target = r.pred_next == target;
+  wire mispredict  = taken ? !pred_target : pred_taken;
+  assign redirect_valid = fire && !exc.valid && mispredict;
   assign redirect_pc    = actual;
 
   assign bp_update_valid  = fire && r.cf != CF_NONE && !exc.valid;
