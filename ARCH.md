@@ -108,3 +108,5 @@ devices are marked skip and the REF state is synced from the DUT.
   Shapes can be overridden with `SIM_DEFINES`/`SYN_DEFINES` (`ICACHE_BLOCK_BYTES`, `ICACHE_SETS`,
   `ICACHE_WAYS`).
 * `make microbench [MB_SIZE=test|train]` runs microbench with counters.
+* Branch prediction: 8-entry BTB with 2-bit counters, chosen with branchsim (`--btrace`, data in
+  `dse/bpu.md`). `make test-fencei[-neg]` and `make -C formal icache` cover fence.i and the icache.
