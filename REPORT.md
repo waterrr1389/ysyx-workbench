@@ -36,7 +36,7 @@ Effect of the stage-4 changes on microbench train (stage 3: same icache, static 
 | # | item | command | status |
 |---|---|---|---|
 | 1 | cpu-tests with DiffTest on ysyxSoC | `make test-cpu` | pass: all 35 (`wrong` fails as intended) |
-| 2 | PSRAM and SDRAM mem-test | `make test-mem` (whole 4 MiB PSRAM and 128 MiB SDRAM; hours) or `make test-mem MEM_KIB=8` | pass |
+| 2 | PSRAM and SDRAM mem-test | `make test-mem` (whole 4 MiB PSRAM and 128 MiB SDRAM; hours) or `make test-mem MEM_KIB=8` | pass: whole PSRAM and SDRAM, 8/16/32-bit, on the final RTL (r = 1 build, `CPU_MHZ=100`; calibration does not affect correctness) |
 | 3 | microbench on ysyxSoC | `make microbench` (`MB_SIZE=test\|train`) | pass: cycles and Total time above |
 | 4 | RT-Thread with a shell command typed over UART | `make test-rtthread` | pass |
 | 5 | fence.i self-modifying code | `make test-fencei`; `make test-fencei-neg` builds the core without the pipeline flush (`FENCEI_NO_FLUSH`) and without the icache invalidation (`FENCEI_NO_INVALIDATE`) | pass; both variants fail |
