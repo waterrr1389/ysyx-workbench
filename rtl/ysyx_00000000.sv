@@ -119,7 +119,13 @@ module ysyx_00000000
     .clock, .reset,
     .req_valid(imem_req_valid), .req_ready(imem_req_ready), .req_addr(imem_req_addr),
     .resp_valid(imem_resp_valid), .resp_ready(imem_resp_ready),
-    .resp_inst(imem_resp_inst), .resp_err(imem_resp_err), .fencei(imem_fencei),
+    .resp_inst(imem_resp_inst), .resp_err(imem_resp_err),
+`ifdef FENCEI_NO_INVALIDATE
+    // Test-only: fence.i leaves the icache valid, to show the fence.i test depends on it.
+    .fencei(1'b0),
+`else
+    .fencei(imem_fencei),
+`endif
     .ar_valid(if_ar_valid), .ar_ready(if_ar_ready), .ar_bits(if_ar_bits),
     .r_valid(if_r_valid), .r_ready(if_r_ready), .r_bits(if_r_bits)
   );

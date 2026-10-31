@@ -155,7 +155,12 @@ module ysyx_00000000_MEU
 
   // ---------------------------------------------------------------- redirect and writeback
   assign fencei         = fire && !exc.valid && r.fencei;
+`ifdef FENCEI_NO_FLUSH
+  // Test-only: fence.i does not flush the pipeline, to show the fence.i test depends on it.
+  assign redirect_valid = trap || mret;
+`else
   assign redirect_valid = trap || mret || fencei;
+`endif
   assign redirect_pc    = trap ? {mtvec, 2'b00} : mret ? {mepc, 2'b00} : r.pc + 32'd4;
 
   assign fwd.valid = valid && r.rd_wen;

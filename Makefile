@@ -91,6 +91,16 @@ MEM_KIB ?=
 test-mem: $(SIM_BIN)
 	scripts/test-mem.sh $(SIM_BIN) $(AM_KERNELS_HOME) $(MEM_KIB)
 
+# fence.i self-modifying code; the two variants without the flush or the icache invalidation must fail.
+test-fencei: $(SIM_BIN)
+	scripts/test-fencei.sh $(SIM_BIN)
+
+test-fencei-neg:
+	$(MAKE) sim SIM_DIR=$(BUILD)/sim-noFLUSH SIM_DEFINES=+define+FENCEI_NO_FLUSH
+	scripts/test-fencei.sh $(BUILD)/sim-noFLUSH/VysyxSoCFull --expect-fail
+	$(MAKE) sim SIM_DIR=$(BUILD)/sim-noINVALIDATE SIM_DEFINES=+define+FENCEI_NO_INVALIDATE
+	scripts/test-fencei.sh $(BUILD)/sim-noINVALIDATE/VysyxSoCFull --expect-fail
+
 # microbench with performance counters; MB_SIZE is test, train (default) or ref.
 MB_SIZE ?= train
 microbench: $(SIM_BIN)
@@ -108,7 +118,7 @@ lint:
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: microbench syn sim lint clean run-img test-cpu test-mem test-rtthread nvboard run-nvboard
+.PHONY: test-fencei test-fencei-neg microbench syn sim lint clean run-img test-cpu test-mem test-rtthread nvboard run-nvboard
 
 # Synthesis and static timing of the core (without ysyxSoC) on nangate45.
 SYN_DIR  ?= $(BUILD)/syn
