@@ -51,7 +51,14 @@ module ysyx_00000000_Core
   logic [31:0] rf_rdata1, rf_rdata2, rf_wdata;
   logic        rf_wen;
 
-  ysyx_00000000_BPU u_bpu (
+  // The BTB size can be overridden for design space exploration.
+`ifndef BPU_ENTRIES
+`define BPU_ENTRIES 8
+`endif
+`ifndef BPU_SPAN_W
+`define BPU_SPAN_W 16
+`endif
+  ysyx_00000000_BPU #(.ENTRIES(`BPU_ENTRIES), .SPAN_W(`BPU_SPAN_W)) u_bpu (
     .clock, .reset,
     .lookup_pc(bp_pc), .lookup_next(bp_next),
     .update_valid(bp_upd_valid), .update_cf(bp_upd_cf), .update_pc(bp_upd_pc),
