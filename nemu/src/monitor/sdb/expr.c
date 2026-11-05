@@ -19,8 +19,10 @@
 /* We use the POSIX regex functions to process regular expressions.
  * Type 'man regex' for more information about POSIX regex functions.
  */
+#include <limits.h>
 #include <regex.h>
 #include <stdint.h>
+#include <stdlib.h>
 void set_nemu_state(int state, vaddr_t pc, int halt_ret);
 
 enum {
@@ -242,7 +244,7 @@ word_t expr(char *e, bool *success) {
   if (status != EVAL_SUCCESS) {
     *success = false;
    if (status == EVAL_ERR_ZERODIV) {
-    printf("Error: Division by zero!\n");
+    printf("Error: Division or modulo by zero!\n");
   } else if (status == EVAL_ERR_INVALID) {
     printf("Error: Invalid expression!\n");
   }
@@ -439,6 +441,9 @@ EvalStatus eval(int p, int q, word_t *result) {
       *result = val1 / val2;
       break;
     case TK_MOD:
+      // x % 0 is undefined in C and raises SIGFPE on the host, killing NEMU.
+      if (val2 == 0)
+        return EVAL_ERR_ZERODIV;
       *result = val1 % val2;
       break;
     case TK_AND:
@@ -464,9 +469,12 @@ EvalStatus eval(int p, int q, word_t *result) {
 }
 
 int test() {
-  FILE *fp =
-      fopen("/home/waterrr/ysyx-workbench/nemu/tools/gen-expr/input", "r");
-  Assert(fp, "%s\n", "Failed to open file");
+  const char *home = getenv("NEMU_HOME");
+  Assert(home, "%s\n", "NEMU_HOME is not set");
+  char path[PATH_MAX];
+  snprintf(path, sizeof(path), "%s/tools/gen-expr/input", home);
+  FILE *fp = fopen(path, "r");
+  Assert(fp, "Failed to open %s\n", path);
 
   int correctNum = 0;
   char str[4096] = {0};
@@ -476,7 +484,8 @@ int test() {
   word_t val1, val2;
   bool success = true;
 
-  while (fgets(str, sizeof(str), fp) != NULL) {
+  // row counts every input line, including skipped ones, so messages match the file.
+  for (; fgets(str, sizeof(str), fp) != NULL; row++) {
     // 解析标准答案的值
     if (sscanf(str, "%u", &val2) != 1) {
       printf("%d line sscanf() failed\n", row);
@@ -510,7 +519,6 @@ int test() {
     } else {
       printf("Line%d is wrong: val = %d ref = %d\n", row, val1, val2);
     }
-    row++;
 
     memset(str, 0, 4096);
   }

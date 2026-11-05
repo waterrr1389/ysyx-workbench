@@ -124,9 +124,21 @@ static int cmd_x(char *args) {
 			return 0;
 		}
 
-		// get the number of bytes
-		sscanf(arg1, "%d", &n);
+		if (sscanf(arg1, "%d", &n) != 1 || n <= 0) {
+			printf("Usage: x N EXPR (N > 0)\n");
+			return 0;
+		}
 		word_t addr = expr(arg2, &success);
+		if (!success) {
+			return 0;
+		}
+		// guest_to_host() does no bounds check: an address outside pmem
+		// becomes a wild host pointer and segfaults NEMU. Compare N against the
+		// words left instead of computing addr + 4N, which could wrap around.
+		if (!in_pmem(addr) || (uint64_t)n > ((uint64_t)PMEM_RIGHT - addr + 1) / 4) {
+			printf("Address range " FMT_WORD " + %d words is outside pmem\n", addr, n);
+			return 0;
+		}
 		uint8_t *host_addr = guest_to_host(addr);
 
 		for (int i = 0; i < 4 * n; i++) {
@@ -144,10 +156,24 @@ static int cmd_w(char *args) {
 		printf("Please input expr for watchpoints\n");
 		return 0;
 	}
-	WP *wp = new_wp();
+	WP *probe = NULL;
+	if (strlen(args) >= sizeof(probe->str)) {
+		printf("Watchpoint expression too long (max %zu chars)\n", sizeof(probe->str) - 1);
+		return 0;
+	}
+	// Evaluate before allocating, so an invalid expression never enters the list.
 	bool success = true;
+	word_t value = expr(args, &success);
+	if (!success) {
+		return 0;
+	}
+	WP *wp = new_wp();
+	if (wp == NULL) {
+		printf("No free watchpoints; delete one with 'd N'\n");
+		return 0;
+	}
 	strcpy(wp->str, args);
-	wp->value = expr(args, &success);
+	wp->value = value;
 	return 0;
 }
 

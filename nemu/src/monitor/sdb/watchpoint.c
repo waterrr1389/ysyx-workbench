@@ -39,11 +39,11 @@ void init_wp_pool() {
   free_ = wp_pool;
 }
 
-/* TODO: Implement the functionality of watchpoint */
+// Returns NULL when the pool is exhausted; the caller reports it.
+// A full pool is a user error at the prompt and must not abort NEMU.
 WP* new_wp() {
   if (free_ == NULL) {
-    printf("No enough watchpoints.\n");
-    assert(0);
+    return NULL;
   }
   WP *wp = free_;
   free_ = free_->next;
