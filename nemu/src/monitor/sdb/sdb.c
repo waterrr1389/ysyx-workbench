@@ -18,6 +18,9 @@
 #include "utils.h"
 #include "watchpoint.h"
 #include <cpu/cpu.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <limits.h>
 #include <isa.h>
 #include <memory/paddr.h>
 #include <readline/history.h>
@@ -27,6 +30,30 @@
 #include <string.h>
 
 static int is_batch_mode = false;
+
+// Command handler results. sdb_mainloop() leaves the loop on any negative
+// value, so CMD_QUIT must stay negative.
+enum { CMD_OK = 0, CMD_QUIT = -1 };
+
+// Parses a whole unsigned decimal argument (trailing spaces allowed).
+// sscanf("%d") accepted "3abc" as 3, left the target uninitialized on
+// "abc", and let "si -1" become UINT64_MAX steps; this rejects all three.
+static bool parse_uint(const char *s, uint64_t *out) {
+	if (s == NULL || *s < '0' || *s > '9') {
+		return false;
+	}
+	char *end;
+	errno = 0;
+	unsigned long long v = strtoull(s, &end, 10);
+	while (*end == ' ') {
+		end++;
+	}
+	if (errno != 0 || *end != '\0') {
+		return false;
+	}
+	*out = v;
+	return true;
+}
 
 void init_regex();
 void init_wp_pool();
@@ -52,67 +79,69 @@ static char *rl_gets() {
 
 static int cmd_c(char *args) {
 	cpu_exec(UINT64_MAX);
-	return 0;
+	return CMD_OK;
 }
 
 static int cmd_q(char *args) {
 	set_nemu_state(NEMU_QUIT, nemu_state.halt_pc, nemu_state.halt_ret);
-	return -1;
+	return CMD_QUIT;
 }
 
 static int cmd_help(char *args);
 
 static int cmd_si(char *args) {
-	int n;
-	if (args == NULL) {
-		n = 1;
-	} else {
-		sscanf(args, "%d", &n);
+	uint64_t n = 1;
+	if (args != NULL && (!parse_uint(args, &n) || n == 0)) {
+		printf("Usage: si [N] (N > 0, default 1)\n");
+		return CMD_OK;
 	}
 	cpu_exec(n);
-	return 0;
+	return CMD_OK;
 }
 
 static int cmd_info_r(char *args) {
 	isa_reg_display();
-	return 0;
+	return CMD_OK;
 }
 
 static int cmd_info_w(char *args) {
     watchpoint_display();
 
-	return 0;
+	return CMD_OK;
 }
 
 static int cmd_info(char *args) {
-	if (args == NULL) {
-		printf("Please input 'r' or 'w'\n");
-		return 0;
-	}
-	if (args[0] == 'r')
+	if (args != NULL && args[0] == 'r')
 		cmd_info_r(args);
-	else if (args[0] == 'w')
+	else if (args != NULL && args[0] == 'w')
 		cmd_info_w(args);
+	else
+		printf("Usage: info r|w\n");
 
-	return 0;
+	return CMD_OK;
 }
 
 static int cmd_expr(char *args) {
 	if (args == NULL) {
-		return 0;
+		printf("Usage: p EXPR\n");
+		return CMD_OK;
 	}
 	bool success = true;
 	word_t result = expr(args, &success);
-	printf(FMT_WORD, result);
-	return 0;
+	// expr() has already printed why it failed; printing 0 would look like a result.
+	if (!success) {
+		return CMD_OK;
+	}
+	printf(FMT_WORD "\n", result);
+	return CMD_OK;
 }
 
 static int cmd_x(char *args) {
 	if (args == NULL) {
 		printf("%s\n", "Please input arguments");
-		return 0;
+		return CMD_OK;
 	} else {
-		int n;
+		uint64_t n;
 		bool success = true;
 
 		char *arg1 = strtok(args, " ");
@@ -121,77 +150,82 @@ static int cmd_x(char *args) {
 		char *arg2 = strtok(NULL, " ");
 		if (arg2 == NULL) {
 			printf("%s\n", "Memory Scan: Please input address");
-			return 0;
+			return CMD_OK;
 		}
 
-		if (sscanf(arg1, "%d", &n) != 1 || n <= 0) {
+		if (!parse_uint(arg1, &n) || n == 0) {
 			printf("Usage: x N EXPR (N > 0)\n");
-			return 0;
+			return CMD_OK;
 		}
 		word_t addr = expr(arg2, &success);
 		if (!success) {
-			return 0;
+			return CMD_OK;
 		}
 		// guest_to_host() does no bounds check: an address outside pmem
 		// becomes a wild host pointer and segfaults NEMU. Compare N against the
 		// words left instead of computing addr + 4N, which could wrap around.
-		if (!in_pmem(addr) || (uint64_t)n > ((uint64_t)PMEM_RIGHT - addr + 1) / 4) {
-			printf("Address range " FMT_WORD " + %d words is outside pmem\n", addr, n);
-			return 0;
+		if (!in_pmem(addr) || n > ((uint64_t)PMEM_RIGHT - addr + 1) / 4) {
+			printf("Address range " FMT_WORD " + %" PRIu64 " words is outside pmem\n", addr, n);
+			return CMD_OK;
 		}
 		uint8_t *host_addr = guest_to_host(addr);
 
-		for (int i = 0; i < 4 * n; i++) {
+		for (uint64_t i = 0; i < 4 * n; i++) {
 			printf("%02x ", host_addr[i]);
 			if (i % 4 == 3)
 				printf("\n");
 		}
 		printf("\n");
 	}
-	return 0;
+	return CMD_OK;
 }
 
 static int cmd_w(char *args) {
 	if (args == NULL) {
 		printf("Please input expr for watchpoints\n");
-		return 0;
+		return CMD_OK;
 	}
 	WP *probe = NULL;
 	if (strlen(args) >= sizeof(probe->str)) {
 		printf("Watchpoint expression too long (max %zu chars)\n", sizeof(probe->str) - 1);
-		return 0;
+		return CMD_OK;
 	}
 	// Evaluate before allocating, so an invalid expression never enters the list.
 	bool success = true;
 	word_t value = expr(args, &success);
 	if (!success) {
-		return 0;
+		return CMD_OK;
 	}
 	WP *wp = new_wp();
 	if (wp == NULL) {
 		printf("No free watchpoints; delete one with 'd N'\n");
-		return 0;
+		return CMD_OK;
 	}
 	strcpy(wp->str, args);
 	wp->value = value;
-	return 0;
+	return CMD_OK;
 }
 
 static int cmd_d(char *args) {
 	if (args == NULL) {
 		printf("Please input watchpoint index to delete\n");
-		return 0;
+		return CMD_OK;
 	}
-	int index;
-	sscanf(args, "%d", &index);
-	printf("Delete watchpoint %d\n", index);
-	WP *wp = get_wp(index);
+	uint64_t index;
+	// Bound to INT_MAX before the cast: get_wp() takes an int, and e.g.
+	// 4294967296 would otherwise truncate to 0 and delete watchpoint 0.
+	if (!parse_uint(args, &index) || index > INT_MAX) {
+		printf("Usage: d N\n");
+		return CMD_OK;
+	}
+	WP *wp = get_wp((int)index);
 	if (wp == NULL) {
-		printf("Watchpoint %d does not exist\n", index);
-		return 0;
+		printf("Watchpoint %d does not exist\n", (int)index);
+		return CMD_OK;
 	}
 	free_wp(wp);
-	return 0;
+	printf("Deleted watchpoint %d\n", (int)index);
+	return CMD_OK;
 }
 
 static struct {
@@ -230,12 +264,12 @@ static int cmd_help(char *args) {
 			if (strcmp(arg, cmd_table[i].name) == 0) {
 				printf("%s - %s\n", cmd_table[i].name,
 					   cmd_table[i].description);
-				return 0;
+				return CMD_OK;
 			}
 		}
 		printf("Unknown command '%s'\n", arg);
 	}
-	return 0;
+	return CMD_OK;
 }
 
 void sdb_set_batch_mode() { is_batch_mode = true; }
