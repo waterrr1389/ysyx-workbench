@@ -115,10 +115,14 @@ $(shell mkdir -p $(dir $@))$(file >$@.json,{"directory":"$(WORK_DIR)","file":"$(
 endef
 
 ### Rule (compile): a single `.c` -> `.o` (gcc)
+### `make PREPROCESS=1` also writes the preprocessed source to `$@.i`.
+### Opt-in because ccache cannot cache `-E`, so it would rerun on every compile.
 $(DST_DIR)/%.o: %.c
 	@mkdir -p $(dir $@) && echo + CC $<
 	@$(C_COMPILE)
+ifneq ($(PREPROCESS),)
 	@$(CC) -std=gnu11 $(CFLAGS) -E -o $@.i $(realpath $<)
+endif
 	$(call record_compile,$(C_COMPILE))
 
 ### Rule (compile): a single `.cc` -> `.o` (g++)
