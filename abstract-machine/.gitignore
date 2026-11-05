@@ -17,3 +17,5 @@ _*
 build/
 !.gitignore
 .vscode
+!meson.build
+!*.ini

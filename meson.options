@@ -1,0 +1,2 @@
+option('nemu', type: 'string', value: 'nemu/build/riscv32-nemu-interpreter',
+  description: 'NEMU executable used by the tests, relative to the workbench root')

@@ -18,3 +18,5 @@
 /architecture-labs/
 /exam-prep
 /rt-thread-am/fceux-am
+!meson.build
+!meson.options
