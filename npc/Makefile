@@ -1,57 +1,35 @@
-VERILATOR := verilator
-BUILD_DIR := ./build
-VERILATOR_FLAGS := --trace-fst -cc --exe --build -j --top-module top --Mdir build -I$(abspath ./vsrc) --autoflush # Verilator >= 5.038 默认开启断言，关闭用 --no-assert
-# 每个传递给C编译器的参数前面都要加-CFLAGS
-CFLAGS := -CFLAGS -Wall -CFLAGS -Werror -CFLAGS -Wno-unused-function -CFLAGS -ggdb3
-# DiffTest 参考模型：NEMU 以共享库方式构建的产物（menuconfig 里切换 build target）
-CFLAGS += -CFLAGS '-DREF_SO_FILE=\"$(NEMU_HOME)/build/riscv32-nemu-interpreter-so\"'
-# 每个传递给链接器的参数前面都要加-LDFLAGS
-LDFLAGS := -LDFLAGS -lreadline
-CONFIG ?= configs/default.toml
-CONFIG_GENERATOR := scripts/gen_config.py
-CONFIG_NAME := $(basename $(notdir $(CONFIG)))
-CONFIG_HEADER := $(abspath $(BUILD_DIR)/generated/$(CONFIG_NAME)/npc_config.h)
+# The model is compiled by Meson (meson.build): one build directory per
+# configuration, chosen with meson options. This Makefile keeps the entry points
+# AM's `make run` and the formal checks expect.
+#   make sim                                   build ../build-npc
+#   make sim BUILD_DIR=../build-npc-diff       another configuration, set up with
+#                                              meson setup ../build-npc-diff . -Ddifftest=true
 
-INC_PATH += $(NPC_HOME)/include $(NEMU_HOME)/include $(dir $(CONFIG_HEADER))
-INCFLAGS += $(addprefix -CFLAGS -I, $(INC_PATH))
-# The package must be compiled before the modules that import it.
-VSRCS = $(abspath ./vsrc/npc_pkg.sv) $(filter-out %/npc_pkg.sv, $(shell find $(abspath ./vsrc) -type f \( -name "*.v" -o -name "*.sv" \)))
-CSRCS = $(shell find $(abspath ./csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
-CSRCS += $(NEMU_HOME)/tools/difftest-client/reference.cc
+BUILD_DIR ?= $(abspath $(NPC_HOME)/../build-npc)
 IMG := ./dummy.bin
 ARGS ?=
 
-sim: $(CONFIG_HEADER) $(BUILD_DIR)
-	$(VERILATOR) $(VERILATOR_FLAGS) $(CFLAGS) $(LDFLAGS) $(INCFLAGS) $(VSRCS) $(CSRCS)  
-	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
-	@echo "Write this Makefile by your self."
+$(BUILD_DIR)/build.ninja:
+	meson setup $(BUILD_DIR) $(NPC_HOME)
 
-$(CONFIG_HEADER): $(CONFIG) $(CONFIG_GENERATOR)
-	python3 $(CONFIG_GENERATOR) --input $(CONFIG) --output $@
+# Ninja decides what is stale; it also makes the "sim RTL" tracer commit.
+sim: $(BUILD_DIR)/build.ninja
+	@ninja -C $(BUILD_DIR)
 
-$(BUILD_DIR):
-	@mkdir -p $(BUILD_DIR)
-	
 # Style checks off by default in sim; run on demand to catch unused or undriven signals
-lint:
-	$(VERILATOR) --lint-only -Wall -Wno-PINCONNECTEMPTY --top-module top -I$(abspath ./vsrc) $(VSRCS)
+lint: $(BUILD_DIR)/build.ninja
+	@ninja -C $(BUILD_DIR) lint
 
 wave:
 	gtkwave waveform.fst
 
-run:
+run: sim
 	$(BUILD_DIR)/Vtop $(if $(WAVE),-w waveform.fst) $(ARGS) $(IMG)
 
-# Parallel cpu-tests on the current build; build with CONFIG=configs/difftest.toml to diff each test
-regress:
-	scripts/regress.sh $(TESTS)
-
-gdb:
+gdb: sim
 	gdb $(BUILD_DIR)/Vtop
 
-.PHONY:  sim run clean wave lint regress
+clean:
+	-rm -rf $(BUILD_DIR)
 
-clean: 
-	@rm -rf $(BUILD_DIR)
-
-include ../Makefile
+.PHONY: sim run clean wave lint gdb

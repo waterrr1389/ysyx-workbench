@@ -19,11 +19,11 @@ Git layout:
 ## Build, Test, and Development Commands
 - `bash init.sh <name>`: initialize/update expected subprojects and env vars (`nemu`, `abstract-machine`, `am-kernels`, `nvboard`, `npc`).
 - `make -C nemu menuconfig`: open NEMU Kconfig.
-- `make -C nemu riscv32-am_defconfig && make -C nemu -j$(nproc)`: load the checked-in RV32 preset and build NEMU.
+- `make -C nemu riscv32-am_defconfig && make -C nemu`: load the checked-in RV32 preset and build NEMU into `build-nemu/` (Meson; the build directory's compiler must match `CONFIG_CC`).
 - `make -C nemu run IMG=/path/to/image.bin ARGS="--log=build/nemu-log.txt --elf=/path/to/prog.elf"`: run with logs/ELF symbols.
-- `make -C npc sim`: build the Verilator model. AM's NPC `run` target only invokes `make -C npc run` and never rebuilds the model, so rerun `sim` after RTL changes.
+- `make -C npc sim`: build the Verilator model into `build-npc/Vtop` (Meson). `make -C npc run` rebuilds it first when RTL or harness sources changed.
 - `make -C am-kernels/tests/cpu-tests ARCH=riscv32i-npc run ALL=dummy`: run a CPU test on NPC in batch mode with ELF symbols. `riscv32e-npc` also exists and builds for RV32E.
-- NPC DiffTest: set `[difftest] enable = true` in an `npc/configs/*.toml` and pass it as `CONFIG=`. NEMU must first be built as a shared library (`TARGET_SHARE` in menuconfig), which produces `nemu/build/riscv32-nemu-interpreter-so`.
+- NPC DiffTest: `meson setup build-npc-diff npc -Ddifftest=true -Dnemu_so=<path to the NEMU .so>`, then `make -C npc sim BUILD_DIR=$PWD/build-npc-diff`. Other options (`itrace`, `ftrace`, `mtrace`) are in `npc/meson.options`. NEMU built with `TARGET_SHARE` produces `build-nemu/riscv32-nemu-interpreter.so`.
 - `make -C npc/formal`: AXI4 formal checks of the NPC memory path; see `npc/AGENTS.md`.
 - `make -C am-kernels/tests/cpu-tests ARCH=riscv32-nemu -j 1 run`: run the full CPU regression suite on NEMU.
 - `make -C am-kernels/tests/cpu-tests ARCH=riscv32-nemu -j 1 run ALL=dummy`: run one CPU test; replace `dummy` with a filename stem from `tests/`.
@@ -31,6 +31,12 @@ Git layout:
 - `make -C am-kernels/kernels/yield-os run ARCH=riscv32-nemu`: run `yield-os`; stop it manually because successful scheduling loops indefinitely.
 - `make -C nemu/tools/spike-diff GUEST_ISA=riscv32`: build the RV32 Spike DiffTest shared library directly.
 - `make -C <subproject> clean`: clean local build outputs.
+
+Meson builds the AM libraries, the CPU tests and `yield-os`; the other am-kernels programs (and rt-thread) still use the AM Makefiles. One build directory per ARCH:
+- `meson setup build-riscv32-nemu --cross-file abstract-machine/cross/riscv32-nemu.ini` (also `riscv32e-npc`, `riscv32i-npc`; no cross file for `native`), then `ninja -C build-riscv32-nemu`.
+- `meson test -C build-riscv32-nemu` runs all CPU tests; `meson test -C build-riscv32-nemu add` runs one. NEMU tests run one at a time when NEMU's DiffTest is on.
+- `ninja -C build-riscv32-nemu run-yield-os` runs a program; `meson configure build-riscv32-nemu -Dmainargs=...` sets its mainargs.
+- `-Dnemu=` / `-Dnpc=` pick the simulator (default `build-nemu/...`, `build-npc/Vtop`); it is looked up at setup, so reconfigure after building it for the first time.
 
 CPU tests with DiffTest enabled must use `-j 1`. Omit `ALL` for the full suite;
 set `ALL=<test>` to run one test.

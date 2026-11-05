@@ -34,7 +34,7 @@ mainargs_placeholder = 'The insert-arg rule in Makefile will insert mainargs her
 
 ## Compile flags, shared by am, klib and every program
 
-# -std comes from the c_std and cpp_std options in the top-level meson.build.
+# -std comes from the c_std option in the top-level meson.build.
 am_c_args = [
   '-O2', '-Wall', '-Werror',
   '-D__ISA__="@0@"'.format(isa),
@@ -74,9 +74,6 @@ if platform == 'nemu'
 endif
 
 am_inc = include_directories(am_inc_dirs)
-
-# Only C++ sources get these; programs pass them as `cpp_args: am_cpp_args`.
-am_cpp_args = ['-ffreestanding', '-fno-rtti', '-fno-exceptions']
 
 ## Link flags
 
@@ -217,5 +214,19 @@ if bare_metal
   if not am_runner.found()
     # Found only at setup time: build the simulator, then `meson setup --reconfigure`.
     warning('@0@ not found, so no tests or run targets are defined; build it and reconfigure'.format(runner_path))
+  endif
+endif
+
+# NEMU with DiffTest on needs --diff=<reference>, chosen in its .config the same
+# way nemu/tools/difftest.mk does. NPC compiles its reference path in instead.
+runner_args = []
+nemu_difftest = false
+if platform == 'nemu'
+  nemu_cfg = import('keyval').load(meson.project_source_root() / 'nemu/.config')
+  if nemu_cfg.has_key('CONFIG_DIFFTEST')
+    nemu_difftest = true
+    ref_so = 'nemu' / nemu_cfg.get('CONFIG_DIFFTEST_REF_PATH').strip('"') / 'build' / '@0@-@1@-so'.format(
+      nemu_cfg.get('CONFIG_ISA').strip('"'), nemu_cfg.get('CONFIG_DIFFTEST_REF_NAME').strip('"'))
+    runner_args += '--diff=' + meson.project_source_root() / ref_so
   endif
 endif
