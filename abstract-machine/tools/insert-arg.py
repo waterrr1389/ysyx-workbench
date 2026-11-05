@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
+import shutil
 from sys import argv
 
+# usage: insert-arg.py <bin> <max_len> <placeholder> <mainargs> [<out>]
+# Patches <bin> in place, or a copy of it at <out> so the input stays a build product.
 bin = argv[1]
 max_len = int(argv[2])
 placeholder = argv[3]
@@ -10,7 +13,11 @@ mainargs = argv[4]
 if len(mainargs) >= max_len:
     print("Error: mainargs should not be longer than {0} bytes\n".format( max_len))
     exit(1)
-print("mainargs={0}".format(mainargs))
+if len(argv) > 5:
+    shutil.copyfile(bin, argv[5])
+    bin = argv[5]
+else:
+    print("mainargs={0}".format(mainargs))
 
 fp = open(bin, 'r+b')
 data = fp.read()

@@ -1,10 +1,12 @@
-project('ysyx-workbench', 'c',
+project('ysyx-workbench', 'c', 'cpp',
   meson_version: '>=1.12',
   default_options: [
     # Every flag the AM programs need is spelled out in abstract-machine/meson.build.
     # These keep Meson from adding its own: no -O0 -g, no -Wall duplicate,
     # no -fPIC/-pie, and no --as-needed/--no-undefined on a bare-metal link.
     'buildtype=plain',
+    'c_std=gnu11',
+    'cpp_std=c++17',
     'warning_level=0',
     'b_staticpic=false',
     'b_pie=false',

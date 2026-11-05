@@ -27,10 +27,16 @@ endif
 
 bare_metal = arch != 'native'
 
+# Bare-metal images carry this string; tools/insert-arg.py finds it in the .bin
+# and overwrites it with the program's mainargs. native reads $mainargs instead.
+mainargs_max_len = 64
+mainargs_placeholder = 'The insert-arg rule in Makefile will insert mainargs here.'
+
 ## Compile flags, shared by am, klib and every program
 
+# -std comes from the c_std and cpp_std options in the top-level meson.build.
 am_c_args = [
-  '-std=gnu11', '-O2', '-Wall', '-Werror',
+  '-O2', '-Wall', '-Werror',
   '-D__ISA__="@0@"'.format(isa),
   '-D__ISA_@0@__'.format(isa.to_upper()),
   '-D__ARCH__=@0@'.format(arch),
@@ -53,9 +59,8 @@ if bare_metal
     '-DARCH_H="arch/riscv.h"',
     '-fno-pic', '-mcmodel=medany', '-mstrict-align',
     '-static', '-fdata-sections', '-ffunction-sections',
-    # tools/insert-arg.py patches mainargs into the image by finding this string.
-    '-DMAINARGS_MAX_LEN=64',
-    '-DMAINARGS_PLACEHOLDER="The insert-arg rule in Makefile will insert mainargs here."',
+    '-DMAINARGS_MAX_LEN=@0@'.format(mainargs_max_len),
+    '-DMAINARGS_PLACEHOLDER="@0@"'.format(mainargs_placeholder),
   ]
 else
   # native runs AM programs as Linux processes and draws through SDL.
@@ -69,6 +74,9 @@ if platform == 'nemu'
 endif
 
 am_inc = include_directories(am_inc_dirs)
+
+# Only C++ sources get these; programs pass them as `cpp_args: am_cpp_args`.
+am_cpp_args = ['-ffreestanding', '-fno-rtti', '-fno-exceptions']
 
 ## Link flags
 
@@ -90,8 +98,9 @@ if bare_metal
     '-Wl,-e,_start',
   ]
 else
-  # The Makefile linked with g++, whose driver adds -lm; native/ioe/gpu.c needs it.
-  am_link_args = ['-Wl,-z,noexecstack', '-pie', '-ldl', '-lm']
+  # Programs are linked with `pie: true`. The Makefile linked with g++, whose
+  # driver adds -lm; native/ioe/gpu.c needs it.
+  am_link_args = ['-Wl,-z,noexecstack', '-ldl', '-lm']
 endif
 
 ## Libraries
@@ -199,6 +208,7 @@ endif
 if bare_metal
   objcopy = find_program('objcopy')
   objdump = find_program('objdump')
+  insert_arg = find_program('tools/insert-arg.py')
 endif
 
 if platform == 'nemu'
