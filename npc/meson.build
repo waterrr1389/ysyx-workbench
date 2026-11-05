@@ -68,6 +68,9 @@ headers = files(
   'include/trace/ftrace.h',
   'include/trace/iRingBuffer.h',
   'include/trace/riscv_decode.h',
+  # Shared with NEMU through the DiffTest client (reference.cc, difftest.cc).
+  '../nemu/include/difftest/reference.hpp',
+  '../nemu/include/difftest/arch/riscv32.h',
 )
 
 ## The model: Verilator generates the C++ and compiles it with its own make

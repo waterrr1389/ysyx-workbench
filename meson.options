@@ -2,5 +2,5 @@ option('nemu', type: 'string', value: 'build-nemu/riscv32-nemu-interpreter',
   description: 'NEMU executable used by the tests, relative to the workbench root (meson setup build-nemu nemu)')
 option('mainargs', type: 'string', value: '',
   description: 'Argument string passed to main() of every AM program image')
-option('npc', type: 'string', value: 'npc/build/Vtop',
+option('npc', type: 'string', value: 'build-npc/Vtop',
   description: 'NPC simulator used by the tests, relative to the workbench root')
