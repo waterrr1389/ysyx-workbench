@@ -9,18 +9,18 @@ This workspace is the YSYX multi-repo workbench. Core components are:
 - `nvboard/`: peripheral simulation support library.
 - `riscv-tests-am/`, `riscv-arch-test-am/`: ISA test suites (submodules).
 
-Treat `build/` directories, `.config`, generated headers, and waveform/log outputs as generated artifacts.
+Treat `build/` and `build-*/` directories, `.config`, generated headers, and waveform/log outputs as generated artifacts.
 
 Git layout:
 - `am-kernels/` and `nvboard/` are separate git repositories that the workbench ignores. Changes there are committed in that repository, not here.
 - The root `.gitignore` and `npc/.gitignore` are allow-lists. After adding a file of a new type, confirm with `git status` that it is not silently ignored.
-- Builds append commits to the `tracer-ysyx` branch through the `git_commit` calls in `nemu/scripts/native.mk` and `npc/Makefile`. This is course tracing: leave those calls in place and do not treat the commits as stray.
+- Builds append commits to the `tracer-ysyx` branch: the `tracer-*` targets in `nemu/meson.build` and `npc/meson.build` commit after each NEMU or model build, and `nemu/Makefile` commits on `run`/`gdb`. This is course tracing: leave those calls in place and do not treat the commits as stray.
 
 ## Build, Test, and Development Commands
 - `bash init.sh <name>`: initialize/update expected subprojects and env vars (`nemu`, `abstract-machine`, `am-kernels`, `nvboard`, `npc`).
 - `make -C nemu menuconfig`: open NEMU Kconfig.
 - `make -C nemu riscv32-am_defconfig && make -C nemu`: load the checked-in RV32 preset and build NEMU into `build-nemu/` (Meson; the build directory's compiler must match `CONFIG_CC`).
-- `make -C nemu run IMG=/path/to/image.bin ARGS="--log=build/nemu-log.txt --elf=/path/to/prog.elf"`: run with logs/ELF symbols.
+- `make -C nemu run IMG=/path/to/image.bin ARGS="--log=../build-nemu/nemu-log.txt --elf=/path/to/prog.elf"`: run with logs/ELF symbols.
 - `make -C npc sim`: build the Verilator model into `build-npc/Vtop` (Meson). `make -C npc run` rebuilds it first when RTL or harness sources changed.
 - `make -C am-kernels/tests/cpu-tests ARCH=riscv32i-npc run ALL=dummy`: run a CPU test on NPC in batch mode with ELF symbols. `riscv32e-npc` also exists and builds for RV32E.
 - NPC DiffTest: `meson setup build-npc-diff npc -Ddifftest=true -Dnemu_so=<path to the NEMU .so>`, then `make -C npc sim BUILD_DIR=$PWD/build-npc-diff`. Other options (`itrace`, `ftrace`, `mtrace`) are in `npc/meson.options`. NEMU built with `TARGET_SHARE` produces `build-nemu/riscv32-nemu-interpreter.so`.

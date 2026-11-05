@@ -12,7 +12,7 @@
 - `make clean`: remove the build directory.
 - `make -C formal`: run the AXI4 formal checks (`prove` and `cover`) on the bus (`Arbiter`, `Xbar`, `SRAM`, `UART` together), `IFU` and `LSU`. `make -C formal <job>` runs one of `bus|ifu|lsu`; add `TASKS=prove` or `TASKS=cover` to pick one task. Needs `sby`, `yosys`, `yices` and `sv2v`.
 
-`NPC_HOME` and `NEMU_HOME` must be set, which `init.sh` at the workspace root arranges. The `git_commit` call in the Makefile is course grading tooling; leave it in place.
+`NPC_HOME` and `NEMU_HOME` must be set, which `init.sh` at the workspace root arranges. The `tracer-sim-rtl` target in `meson.build` (a `git_commit` after each model build) is course grading tooling; leave it in place.
 
 ## Coding Style & Naming Conventions
 Verilog keeps the style already used in `vsrc/`: module and file names that match the function (`IDU.sv`, `EXU.sv`, `top.sv`), explicit signal widths, and `top` as the Verilator top module. C/C++ keeps small functions and warning-free builds. Beyond that, follow the workspace root `../AGENTS.md`.
@@ -48,7 +48,7 @@ Declare top-level ports flat, as in `val led = IO(Output(UInt(16.W)))`, not insi
 
 ### Fitting the existing Verilator flow
 - Chisel names the clock and reset ports `clock` and `reset`. `vsrc/top.v` names them `clk` and `reset`, and `csrc/sim_main.cpp` drives `top->clk`, so either drive `clock` from the harness or keep a thin wrapper module named `top` that renames the ports.
-- The Makefile collects RTL with `find ./vsrc -name "*.v"`. Chisel emits `.sv`, which that glob drops without any error; widen the glob before generated files are added.
+- `meson.build` lists every RTL source explicitly in `vsrcs`, with `npc_pkg.sv` first; a new or generated `.sv` that is not added there is silently left out of the model. Harness sources go in `csrcs` and headers in `headers`, or edits to them do not rebuild the model.
 - `--top-module top` only holds while a module named `top` stays the top, which is another reason to keep the wrapper.
 - Memory access goes through `import "DPI-C" pmem_read/pmem_write` in `vsrc/SRAM.v`. Chisel 7 expresses the same calls with `chisel3.util.circt.dpi`: `RawUnclockedNonVoidFunctionCall` for the combinational read and `RawClockedVoidFunctionCall` for the write. Both lower to `import "DPI-C"`, so `csrc/dpi-c.cpp` is reused unchanged. These intrinsics are absent from Chisel 6.x, which is a concrete reason to stay on 7.x. A BlackBox carrying an inline `import "DPI-C"`, or plain memory ports driven from C++, remain valid alternatives.
 - Replacing existing RTL rather than adding an isolated block is a cross-module change; write the specification under `../development/` and get it approved first, as the workspace root `../AGENTS.md` requires.
