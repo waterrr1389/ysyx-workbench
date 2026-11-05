@@ -17,3 +17,5 @@
 !README.md
 !AGENTS.md
 build/
+!meson.build
+!meson.options

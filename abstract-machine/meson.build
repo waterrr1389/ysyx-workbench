@@ -211,8 +211,11 @@ if bare_metal
   insert_arg = find_program('tools/insert-arg.py')
 endif
 
-if platform == 'nemu'
-  am_runner = find_program(meson.project_source_root() / get_option('nemu'), required: false)
-elif platform == 'npc'
-  am_runner = find_program(meson.project_source_root() / get_option('npc'), required: false)
+if bare_metal
+  runner_path = get_option(platform)
+  am_runner = find_program(meson.project_source_root() / runner_path, required: false)
+  if not am_runner.found()
+    # Found only at setup time: build the simulator, then `meson setup --reconfigure`.
+    warning('@0@ not found, so no tests or run targets are defined; build it and reconfigure'.format(runner_path))
+  endif
 endif

@@ -1,0 +1,7 @@
+option('itrace', type: 'boolean', value: false, description: 'Instruction trace')
+option('ftrace', type: 'boolean', value: false, description: 'Function call trace')
+option('mtrace', type: 'boolean', value: false, description: 'Memory access trace')
+option('difftest', type: 'boolean', value: false,
+  description: 'Compare every instruction against the NEMU shared library in nemu_so')
+option('nemu_so', type: 'string', value: 'build-nemu-so/riscv32-nemu-interpreter.so',
+  description: 'DiffTest reference, relative to the workbench root')
