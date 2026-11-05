@@ -1,8 +1,10 @@
 # AbstractMachine: the `am` and `klib` libraries plus the flags every AM program
-# is compiled and linked with. The cross file names the ARCH; everything that
-# depends on it is chosen here, in one place.
+# is compiled and linked with. The cross file names the ARCH (no cross file
+# means native); everything that depends on it is chosen in this file.
 
-arch = meson.get_external_property('am_arch')
+arch = meson.get_external_property('am_arch', 'native')
+
+## Per-ARCH settings
 
 if arch == 'riscv32-nemu'
   isa      = 'riscv32'
@@ -16,33 +18,50 @@ elif arch == 'riscv32i-npc'
   isa      = 'riscv32i'
   platform = 'npc'
   march    = ['-march=rv32i_zicsr', '-mabi=ilp32']
+elif arch == 'native'
+  isa      = 'native'
+  platform = ''
 else
   error('unsupported am_arch "@0@"'.format(arch))
 endif
 
+bare_metal = arch != 'native'
+
 ## Compile flags, shared by am, klib and every program
 
-# Applied to C and to .S, which Meson preprocesses with the C compiler.
-codegen_args = march + ['-fno-pic', '-mcmodel=medany', '-mstrict-align']
-
-am_c_args = codegen_args + [
+am_c_args = [
   '-std=gnu11', '-O2', '-Wall', '-Werror',
   '-D__ISA__="@0@"'.format(isa),
   '-D__ISA_@0@__'.format(isa.to_upper()),
   '-D__ARCH__=@0@'.format(arch),
   '-D__ARCH_@0@'.format(arch.to_upper().replace('-', '_')),
-  '-D__PLATFORM__=@0@'.format(platform),
-  '-D__PLATFORM_@0@'.format(platform.to_upper()),
-  '-DARCH_H="arch/riscv.h"',
   '-fno-asynchronous-unwind-tables', '-fno-builtin', '-fno-stack-protector',
   '-Wno-main', '-U_FORTIFY_SOURCE', '-fvisibility=hidden',
-  '-static', '-fdata-sections', '-ffunction-sections',
-  # tools/insert-arg.py patches mainargs into the image by finding this string.
-  '-DMAINARGS_MAX_LEN=64',
-  '-DMAINARGS_PLACEHOLDER="The insert-arg rule in Makefile will insert mainargs here."',
 ]
-
 am_inc_dirs = ['am/include', 'klib/include']
+am_deps = []
+
+if platform != ''
+  am_c_args += [
+    '-D__PLATFORM__=@0@'.format(platform),
+    '-D__PLATFORM_@0@'.format(platform.to_upper()),
+  ]
+endif
+
+if bare_metal
+  am_c_args += march + [
+    '-DARCH_H="arch/riscv.h"',
+    '-fno-pic', '-mcmodel=medany', '-mstrict-align',
+    '-static', '-fdata-sections', '-ffunction-sections',
+    # tools/insert-arg.py patches mainargs into the image by finding this string.
+    '-DMAINARGS_MAX_LEN=64',
+    '-DMAINARGS_PLACEHOLDER="The insert-arg rule in Makefile will insert mainargs here."',
+  ]
+else
+  # native runs AM programs as Linux processes and draws through SDL.
+  am_c_args += '-DARCH_H="arch/native.h"'
+  am_deps += dependency('sdl2')
+endif
 
 if platform == 'nemu'
   am_c_args += '-DISA_H="riscv/riscv.h"'
@@ -55,20 +74,25 @@ am_inc = include_directories(am_inc_dirs)
 
 linker_script = files('scripts/linker.ld')
 
-# Linked through the gcc driver; -nostdlib keeps it from adding crt*.o, libc
-# and libgcc, so the result matches a plain `ld` link of the objects and archives.
-am_link_args = march + [
-  '-nostdlib', '-static',
-  # The distro gcc passes --build-id by default; linker.ld has no rule for that
-  # note, so it would land in the image as an orphan section.
-  '-Wl,--build-id=none',
-  '-Wl,-z,noexecstack',
-  '-Wl,-T,@0@'.format(linker_script[0].full_path()),
-  '-Wl,--defsym=_pmem_start=0x80000000',
-  '-Wl,--defsym=_entry_offset=0x0',
-  '-Wl,--gc-sections',
-  '-Wl,-e,_start',
-]
+if bare_metal
+  # Linked through the gcc driver; -nostdlib keeps it from adding crt*.o, libc
+  # and libgcc, so the result matches a plain `ld` link of the objects and archives.
+  am_link_args = march + [
+    '-nostdlib', '-static',
+    # The distro gcc passes --build-id by default; linker.ld has no rule for that
+    # note, so it would land in the image as an orphan section.
+    '-Wl,--build-id=none',
+    '-Wl,-z,noexecstack',
+    '-Wl,-T,@0@'.format(linker_script[0].full_path()),
+    '-Wl,--defsym=_pmem_start=0x80000000',
+    '-Wl,--defsym=_entry_offset=0x0',
+    '-Wl,--gc-sections',
+    '-Wl,-e,_start',
+  ]
+else
+  # The Makefile linked with g++, whose driver adds -lm; native/ioe/gpu.c needs it.
+  am_link_args = ['-Wl,-z,noexecstack', '-pie', '-ldl', '-lm']
+endif
 
 ## Libraries
 
@@ -87,7 +111,7 @@ if platform == 'nemu'
     'am/src/riscv/nemu/trap.S',
     'am/src/riscv/nemu/vme.c',
   )
-else
+elif platform == 'npc'
   am_srcs = files(
     'am/src/riscv/npc/start.S',
     'am/src/riscv/npc/trm.c',
@@ -106,6 +130,22 @@ else
     'am/src/riscv/npc/libgcc/ashldi3.c',
     'am/src/riscv/npc/libgcc/unused.c',
   )
+else
+  am_srcs = files(
+    'am/src/native/trm.c',
+    'am/src/native/ioe.c',
+    'am/src/native/cte.c',
+    'am/src/native/trap.S',
+    'am/src/native/vme.c',
+    'am/src/native/mpe.c',
+    'am/src/native/platform.c',
+    'am/src/native/ioe/input.c',
+    'am/src/native/ioe/timer.c',
+    'am/src/native/ioe/gpu.c',
+    'am/src/native/ioe/uart.c',
+    'am/src/native/ioe/audio.c',
+    'am/src/native/ioe/disk.c',
+  )
 endif
 
 klib_srcs = files(
@@ -117,33 +157,52 @@ klib_srcs = files(
 )
 
 am_lib = static_library('am', am_srcs,
+  pic: not bare_metal,
   c_args: am_c_args,
   include_directories: [include_directories('am/src'), am_inc],
+  dependencies: am_deps,
   implicit_include_directories: false,
 )
 
 klib_lib = static_library('klib', klib_srcs,
+  pic: not bare_metal,
   c_args: am_c_args,
   include_directories: am_inc,
+  dependencies: am_deps,
   implicit_include_directories: false,
 )
 
 ## What an AM program uses: link it as `executable(..., dependencies: am_dep)`
 
-am_dep = declare_dependency(
-  compile_args: am_c_args,
-  include_directories: am_inc,
-  link_with: [am_lib, klib_lib],
-  link_args: am_link_args,
-)
+if bare_metal
+  am_dep = declare_dependency(
+    compile_args: am_c_args,
+    include_directories: am_inc,
+    link_with: [am_lib, klib_lib],
+    link_args: am_link_args,
+  )
+else
+  # native/platform.c sets up the process through constructors that nothing
+  # references by name; a normal archive link would drop them.
+  am_dep = declare_dependency(
+    compile_args: am_c_args,
+    include_directories: am_inc,
+    link_whole: [am_lib, klib_lib],
+    link_args: am_link_args,
+    dependencies: am_deps,
+  )
+endif
 
-objcopy = find_program('objcopy')
-objdump = find_program('objdump')
+## The simulator that runs AM programs for `meson test`, built by its own Makefile.
+## native programs are ordinary executables and need none.
 
-## The simulator that runs AM programs for `meson test`, built by its own Makefile
+if bare_metal
+  objcopy = find_program('objcopy')
+  objdump = find_program('objdump')
+endif
 
 if platform == 'nemu'
   am_runner = find_program(meson.project_source_root() / get_option('nemu'), required: false)
-else
+elif platform == 'npc'
   am_runner = find_program(meson.project_source_root() / get_option('npc'), required: false)
 endif
