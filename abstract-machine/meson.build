@@ -8,6 +8,14 @@ if arch == 'riscv32-nemu'
   isa      = 'riscv32'
   platform = 'nemu'
   march    = ['-march=rv32im_zicsr', '-mabi=ilp32']
+elif arch == 'riscv32e-npc'
+  isa      = 'riscv32e'
+  platform = 'npc'
+  march    = ['-march=rv32e_zicsr', '-mabi=ilp32e']
+elif arch == 'riscv32i-npc'
+  isa      = 'riscv32i'
+  platform = 'npc'
+  march    = ['-march=rv32i_zicsr', '-mabi=ilp32']
 else
   error('unsupported am_arch "@0@"'.format(arch))
 endif
@@ -26,7 +34,6 @@ am_c_args = codegen_args + [
   '-D__PLATFORM__=@0@'.format(platform),
   '-D__PLATFORM_@0@'.format(platform.to_upper()),
   '-DARCH_H="arch/riscv.h"',
-  '-DISA_H="riscv/riscv.h"',
   '-fno-asynchronous-unwind-tables', '-fno-builtin', '-fno-stack-protector',
   '-Wno-main', '-U_FORTIFY_SOURCE', '-fvisibility=hidden',
   '-static', '-fdata-sections', '-ffunction-sections',
@@ -35,11 +42,14 @@ am_c_args = codegen_args + [
   '-DMAINARGS_PLACEHOLDER="The insert-arg rule in Makefile will insert mainargs here."',
 ]
 
-am_inc = include_directories(
-  'am/include',
-  'klib/include',
-  'am/src/platform/nemu/include',
-)
+am_inc_dirs = ['am/include', 'klib/include']
+
+if platform == 'nemu'
+  am_c_args += '-DISA_H="riscv/riscv.h"'
+  am_inc_dirs += 'am/src/platform/nemu/include'
+endif
+
+am_inc = include_directories(am_inc_dirs)
 
 ## Link flags
 
@@ -62,20 +72,41 @@ am_link_args = march + [
 
 ## Libraries
 
-am_srcs = files(
-  'am/src/platform/nemu/trm.c',
-  'am/src/platform/nemu/ioe/ioe.c',
-  'am/src/platform/nemu/ioe/timer.c',
-  'am/src/platform/nemu/ioe/input.c',
-  'am/src/platform/nemu/ioe/gpu.c',
-  'am/src/platform/nemu/ioe/audio.c',
-  'am/src/platform/nemu/ioe/disk.c',
-  'am/src/platform/nemu/mpe.c',
-  'am/src/riscv/nemu/start.S',
-  'am/src/riscv/nemu/cte.c',
-  'am/src/riscv/nemu/trap.S',
-  'am/src/riscv/nemu/vme.c',
-)
+if platform == 'nemu'
+  am_srcs = files(
+    'am/src/platform/nemu/trm.c',
+    'am/src/platform/nemu/ioe/ioe.c',
+    'am/src/platform/nemu/ioe/timer.c',
+    'am/src/platform/nemu/ioe/input.c',
+    'am/src/platform/nemu/ioe/gpu.c',
+    'am/src/platform/nemu/ioe/audio.c',
+    'am/src/platform/nemu/ioe/disk.c',
+    'am/src/platform/nemu/mpe.c',
+    'am/src/riscv/nemu/start.S',
+    'am/src/riscv/nemu/cte.c',
+    'am/src/riscv/nemu/trap.S',
+    'am/src/riscv/nemu/vme.c',
+  )
+else
+  am_srcs = files(
+    'am/src/riscv/npc/start.S',
+    'am/src/riscv/npc/trm.c',
+    'am/src/riscv/npc/ioe.c',
+    'am/src/riscv/npc/timer.c',
+    'am/src/riscv/npc/input.c',
+    'am/src/riscv/npc/cte.c',
+    'am/src/riscv/npc/trap.S',
+    'am/src/platform/dummy/vme.c',
+    'am/src/platform/dummy/mpe.c',
+    # NPC has no M extension and links without libgcc; these supply the
+    # division and multiplication helpers gcc emits calls to.
+    'am/src/riscv/npc/libgcc/div.S',
+    'am/src/riscv/npc/libgcc/muldi3.S',
+    'am/src/riscv/npc/libgcc/multi3.c',
+    'am/src/riscv/npc/libgcc/ashldi3.c',
+    'am/src/riscv/npc/libgcc/unused.c',
+  )
+endif
 
 klib_srcs = files(
   'klib/src/cpp.c',
@@ -109,4 +140,10 @@ am_dep = declare_dependency(
 objcopy = find_program('objcopy')
 objdump = find_program('objdump')
 
-nemu = find_program(meson.project_source_root() / get_option('nemu'), required: false)
+## The simulator that runs AM programs for `meson test`, built by its own Makefile
+
+if platform == 'nemu'
+  am_runner = find_program(meson.project_source_root() / get_option('nemu'), required: false)
+else
+  am_runner = find_program(meson.project_source_root() / get_option('npc'), required: false)
+endif
