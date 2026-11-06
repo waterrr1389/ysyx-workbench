@@ -23,9 +23,6 @@ static uint64_t host_time_us(void) {
 #if NPC_MTRACE
 static int popcount4(uint8_t mask) {
   int count = 0;
-#if NPC_DIFFTEST
-  difftest_note_store(addr, mask);
-#endif
   for (int i = 0; i < 4; i++) {
     if ((mask & (1u << i)) != 0) {
       count++;
