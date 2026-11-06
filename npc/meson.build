@@ -25,6 +25,7 @@ config_h = configure_file(output: 'npc_config.h', configuration: conf)
 # npc_pkg.sv first: the package must be compiled before the modules that import it.
 vsrcs = files(
   'vsrc/npc_pkg.sv',
+  'vsrc/sim_observer.sv',
   'vsrc/Arbiter.sv',
   'vsrc/EXU.sv',
   'vsrc/IDU.sv',
@@ -41,6 +42,7 @@ vsrcs = files(
 csrcs = files(
   'csrc/difftest/difftest.cc',
   'csrc/dpi-c.cpp',
+  'csrc/cpu_state.cpp',
   'csrc/pmem.cpp',
   'csrc/sdb.c',
   'csrc/sim_main.cpp',
@@ -60,6 +62,7 @@ headers = files(
   'include/base/utils.h',
   'include/difftest/difftest.h',
   'include/sim/dpi-c.h',
+  'include/sim/cpu_state.h',
   'include/sim/pmem.h',
   'include/sim/sdb.h',
   'include/sim/sim_main.h',
@@ -99,7 +102,7 @@ vtop = custom_target('Vtop',
   output: 'Vtop',
   depend_files: [headers, config_h],
   command: [verilator, '--trace-fst', '-cc', '--exe', '--build', '-j', '0',
-            '--top-module', 'top', '--autoflush',
+            '--top-module', 'top', '--autoflush', '+define+NPC_SIM',
             '--Mdir', meson.current_build_dir() / 'obj',
             # -o is relative to --Mdir; the model goes next to obj/, where Meson expects it.
             '-o', '../Vtop',

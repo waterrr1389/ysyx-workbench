@@ -3,15 +3,7 @@ module top
   import npc_pkg::*;
 (
   input  logic  clk,
-  input  logic  reset,
-  // pc is the architectural PC: the next instruction to commit. commit is high in
-  // the cycle an instruction commits; after that edge pc holds its successor.
-  output word_t pc,
-  output logic  commit,
-  output word_t mstatus,
-  output word_t mtvec,
-  output word_t mepc,
-  output word_t mcause
+  input  logic  reset
 );
 
   logic   if_valid, if_ready;  if2id_t if_out;
@@ -31,7 +23,7 @@ module top
   IFU u_ifu (
     .clk, .reset,
     .out_valid(if_valid), .out_ready(if_ready), .out(if_out),
-    .redirect_valid, .redirect_pc, .pc,
+    .redirect_valid, .redirect_pc, .pc(),
     .bus_req(ifu_req), .bus_rsp(ifu_rsp)
   );
 
@@ -65,9 +57,9 @@ module top
   WBU u_wbu (
     .clk, .reset,
     .in_valid(ls_valid), .in_ready(ls_ready), .in(ls_out),
-    .commit, .rf_wen, .rf_waddr, .rf_wdata,
+    .commit(), .rf_wen, .rf_waddr, .rf_wdata,
     .redirect_valid, .redirect_pc,
-    .mstatus, .mtvec, .mepc, .mcause
+    .mstatus(), .mtvec(), .mepc(), .mcause()
   );
 
   Arbiter u_arbiter (

@@ -21,11 +21,4 @@ module RegFile
   assign rdata1 = raddr1 == 4'd0 ? '0 : regs[raddr1];
   assign rdata2 = raddr2 == 4'd0 ? '0 : regs[raddr2];
 
-  // The harness reads registers for DiffTest and the trap result.
-  // Indices beyond RV32E read as zero, matching a reference that never writes them.
-  export "DPI-C" function get_gpr;
-  function int get_gpr(input int index);
-    return (index <= 0 || index >= NR_GPR) ? 0 : regs[index[3:0]];
-  endfunction
-
 endmodule

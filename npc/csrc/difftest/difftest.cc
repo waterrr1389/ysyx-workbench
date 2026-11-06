@@ -1,5 +1,5 @@
 #include "difftest/difftest.h"
-#include "Vtop.h"
+#include "sim/cpu_state.h"
 #include "sim/sim_main.h"
 
 #include <difftest/reference.hpp>
@@ -16,24 +16,7 @@ static const char *reg_names[RISCV32_DIFFTEST_GPR_COUNT] = {
 static std::unique_ptr<difftest::Riscv32DifftestReference> reference;
 
 static riscv32_difftest_state_t export_dut_state() {
-  riscv32_difftest_state_t state = {};
-  state.priv = 3;
-  state.mstatus = 0x1800;
-
-  if (top == NULL) {
-    state.pc = RESET_VECTOR;
-    return state;
-  }
-
-  for (size_t reg_idx = 0; reg_idx < RISCV32_DIFFTEST_GPR_COUNT; reg_idx++) {
-    state.gpr[reg_idx] = read_gpr(reg_idx);
-  }
-  state.pc = top->pc;
-  state.mstatus = top->mstatus;
-  state.mtvec = top->mtvec;
-  state.mepc = top->mepc;
-  state.mcause = top->mcause;
-  return state;
+  return cpu_state();
 }
 
 // Every field compared, in report order. CSRs are included because the DUT
@@ -100,7 +83,7 @@ void init_difftest(const char *ref_so_file, long img_size) {
 
   reference.reset(new difftest::Riscv32DifftestReference(ref_so_file));
   riscv32_difftest_state_t initial_state = export_dut_state();
-  reference->initialize(0, RESET_VECTOR, guest_to_host(RESET_VECTOR), img_size, initial_state);
+  reference->initialize(0, PMEM_BASE, guest_to_host(PMEM_BASE), img_size, initial_state);
 }
 
 void difftest_step(vaddr_t pc, vaddr_t npc) {

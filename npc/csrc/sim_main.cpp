@@ -6,11 +6,10 @@
 #include <assert.h>
 #include <stdint.h>
 #include "Vtop.h"
-#include "Vtop__Dpi.h"
+#include "sim/cpu_state.h"
 #include "difftest/difftest.h"
 #include "verilated.h"
 #include "verilated_fst_c.h"
-#include "svdpi.h"
 #include "base/config.h"
 #include "base/debug.h"
 #include "sim/dpi-c.h"
@@ -24,15 +23,13 @@
 #define RESET_CYCLES    5
 #define NOP_INST        0x00000013u
 #define A0_REG_INDEX    10u
-#define GPR_SCOPE_NAME  "TOP.top.u_rf"
 
-Vtop* top;
-VerilatedContext* contextp;
-VerilatedFstC* tfp;
+static Vtop* top;
+static VerilatedContext* contextp;
+static VerilatedFstC* tfp;
 bool sim;
 uint32_t current_pc;
 NPCState npc_state = { .state = NPC_STOP, .halt_pc = 0, .halt_ret = 0 };
-svScope gpr_scope = nullptr;
 static const char* img_file = NULL;
 static const char* elf_file = NULL;
 static const char* wave_file = NULL;
@@ -60,16 +57,6 @@ void npc_abort(const char* reason, uint32_t pc) {
   npc_state.halt_pc = pc;
   npc_state.reason = reason;
   sim = false;
-}
-
-static void init_gpr_scope() {
-  gpr_scope = svGetScopeFromName(GPR_SCOPE_NAME);
-  assert(gpr_scope != nullptr);
-}
-
-uint32_t read_gpr(uint32_t index) {
-  svSetScope(gpr_scope);
-  return get_gpr(index);
 }
 
 // Every run ends with exactly one line of this shape, so scripts can grep "npc: result=".
@@ -170,29 +157,30 @@ static void dump_wave() {
   if (tfp) tfp->dump(contextp->time());
 }
 
-// One cycle = exactly one posedge; outputs are settled on return.
+// One cycle has one rising edge followed by the snapshot reporting edge.
 static void tick() {
-  top->clk = 0; top->eval(); dump_wave();
   top->clk = 1; top->eval(); dump_wave();
+  top->clk = 0; top->eval(); dump_wave();
 }
 
-// Trace and diff only on cycles that commit an instruction.
 bool step_one_cycle(void) {
-  current_pc = top->pc;
-  // Read before the clock edge; commit goes low after it.
-  bool commit = top->commit;
-  if (commit) {
-    trace_inst();
-  }
+  current_pc = cpu_state().pc;
   tick();
   cycles++;
+  CpuReport report;
+  bool commit = cpu_report_take(&report);
   if (commit) {
+    assert(!report.initial);
+    current_pc = report.commit_pc;
+    // JALR tracing must see the source register before this commit's writeback.
+    trace_inst();
+    cpu_state_accept(report);
     insts++;
     last_commit_cycle = cycles;
   }
 #if NPC_DIFFTEST
   if (commit && sim) {
-    difftest_step(current_pc, top->pc);
+    difftest_step(current_pc, report.state.pc);
   }
 #endif
   if (sim && cycles - last_commit_cycle >= watchdog_cycles) {
@@ -229,14 +217,19 @@ void sim_init(void) {
   top->clk = 0;
 
   init_npc_state();
-  init_gpr_scope();
+  cpu_state_init();
+  top->eval();
 
   for (int i = 0; i < RESET_CYCLES; i++) {
     tick();
   }
   top->reset = 0;
   top->eval();
-  current_pc = top->pc;
+  CpuReport initial;
+  bool received = cpu_report_take(&initial);
+  assert(received && initial.initial);
+  cpu_state_accept(initial);
+  current_pc = initial.state.pc;
 
 #if NPC_ITRACE
   init_disasm();
@@ -313,11 +306,10 @@ int main(int argc, char** argv) {
 #if NPC_FTRACE
   readelf(elf_file);
 #endif
+  sim_init();
 #if NPC_DIFFTEST
   init_difftest(REF_SO_FILE, img_size);
 #endif
-
-  sim_init();
   sdb_mainloop();
   sim_exit();
 
