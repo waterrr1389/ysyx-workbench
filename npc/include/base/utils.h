@@ -20,14 +20,8 @@
 
 #define ANSI_FMT(str, fmt) fmt str ANSI_NONE
 
-#define log_write(...) \
-  do { \
-    extern FILE* log_fp; \
-    fprintf(log_fp, __VA_ARGS__); \      fflush(log_fp); \
-  } while (0) \
-
 #define _Log(...) \
   do { \
     printf(__VA_ARGS__); \
-    log_write(__VA_ARGS__); \
+    fflush(stdout); \
   } while (0)
