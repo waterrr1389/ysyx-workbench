@@ -56,9 +56,19 @@ module PcObserver
   always @(npc_observer_pkg::snapshot) npc_report_pc(pc);
 endmodule
 
+// mtime advances with cycles, which the reference cannot follow.
+module ClintObserver
+  import npc_pkg::*;
+(input logic clk, reset, input axi_req_t req, input axi_rsp_t rsp);
+  import "DPI-C" function void npc_device_read();
+  always @(posedge clk)
+    if (!reset && req.ar_valid && rsp.ar_ready) npc_device_read();
+endmodule
+
 bind WBU CommitObserver sim_commit (
   .clk, .reset, .commit, .commit_pc(in.pc), .mstatus, .mtvec, .mepc, .mcause
 );
 bind RegFile GprObserver sim_gpr (.regs);
 bind IFU PcObserver sim_pc (.pc);
+bind CLINT ClintObserver sim_clint (.clk, .reset, .req, .rsp);
 `endif

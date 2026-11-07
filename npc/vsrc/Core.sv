@@ -20,8 +20,8 @@ module Core
   word_t      rs1_data, rs2_data, rf_wdata;
   logic       rf_wen;
 
-  axi_req_t ifu_req, lsu_req;
-  axi_rsp_t ifu_rsp, lsu_rsp;
+  axi_req_t ifu_req, lsu_req, arb_req, clint_req;
+  axi_rsp_t ifu_rsp, lsu_rsp, arb_rsp, clint_rsp;
 
   IFU u_ifu (
     .clk, .reset,
@@ -68,7 +68,16 @@ module Core
   Arbiter u_arbiter (
     .clk, .reset,
     .ifu_req, .ifu_rsp, .lsu_req, .lsu_rsp,
+    .out_req(arb_req), .out_rsp(arb_rsp)
+  );
+
+  CoreXbar u_core_xbar (
+    .clk, .reset,
+    .in_req(arb_req), .in_rsp(arb_rsp),
+    .clint_req, .clint_rsp,
     .out_req(bus_req), .out_rsp(bus_rsp)
   );
+
+  CLINT u_clint (.clk, .reset, .req(clint_req), .rsp(clint_rsp));
 
 endmodule

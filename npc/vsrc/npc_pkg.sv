@@ -6,6 +6,10 @@ package npc_pkg;
   localparam word_t RESET_PC = 32'h8000_0000;
   localparam int    NR_GPR   = 16;  // RV32E
 
+  // mtime, low word then high word. CLINT selects the word by addr[2],
+  // so the base must stay 8-byte aligned.
+  localparam word_t CLINT_BASE = 32'h0200_0000, CLINT_SIZE = 32'h0000_0008;
+
   // ---------------------------------------------------------------------------
   // AXI4. Every master here keeps at most one transaction outstanding and uses
   // single-beat transfers (len 0, INCR), but the full channel fields are carried

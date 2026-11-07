@@ -6,19 +6,6 @@
 #include "difftest/difftest.h"
 
 #include <string.h>
-#include <time.h>
-
-#define RTC_ADDR 0xa0000048u
-
-// Reading the low word samples the host clock; the high word returns the same
-// sample, so a low-then-high read pair forms one consistent 64-bit value.
-static uint64_t rtc_us;
-
-static uint64_t host_time_us(void) {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
-}
 
 #if NPC_MTRACE
 static int popcount4(uint8_t mask) {
@@ -32,18 +19,19 @@ static int popcount4(uint8_t mask) {
 }
 #endif
 
+// A device read the reference cannot reproduce; the instruction that commits next
+// is skipped by DiffTest.
+void npc_device_read(void) {
+#if NPC_DIFFTEST
+  difftest_skip_ref();
+#endif
+}
+
 int pmem_read(int raddr) {
   word_t addr = (word_t)raddr & ~0x3u;
 #if NPC_MTRACE
   Log("mtrace: read addr = " FMT_WORD ", len = %d", addr, 4);
 #endif
-  if (addr == RTC_ADDR || addr == RTC_ADDR + 4) {
-#if NPC_DIFFTEST
-    difftest_skip_ref();
-#endif
-    if (addr == RTC_ADDR) rtc_us = host_time_us();
-    return (int)(uint32_t)(addr == RTC_ADDR ? rtc_us : rtc_us >> 32);
-  }
   return (int)host_pmem_read(addr, 4);
 }
 

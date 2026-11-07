@@ -17,14 +17,11 @@ module Xbar
 
   localparam word_t SRAM_BASE = 32'h8000_0000, SRAM_SIZE = 32'h0200_0000;
   localparam word_t UART_BASE = 32'h1000_0000, UART_SIZE = 32'h0000_0008;
-  // The RTC is served by the SRAM model, whose pmem_read returns host time there.
-  localparam word_t RTC_BASE  = 32'ha000_0048, RTC_SIZE  = 32'h0000_0008;
 
   typedef enum logic [1:0] { TO_NONE, TO_SRAM, TO_UART, TO_ERR } route_e;
 
   function automatic route_e decode(word_t a, logic is_write);
     if (a - SRAM_BASE < SRAM_SIZE)                return TO_SRAM;
-    if (!is_write && a - RTC_BASE < RTC_SIZE)     return TO_SRAM;
     if (is_write && a - UART_BASE < UART_SIZE)    return TO_UART;  // the UART cannot be read
     return TO_ERR;
   endfunction

@@ -9,6 +9,7 @@ void pmem_write(int waddr, int wdata, char wmask);
 void npc_trap(void);
 void uart_putc(char c);
 void npc_abort_at(const char* reason);
+void npc_device_read(void);
 
 #ifdef __cplusplus
 }

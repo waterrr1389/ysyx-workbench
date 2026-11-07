@@ -1,7 +1,7 @@
 #include <am.h>
 #include <riscv/riscv.h>
 
-#define RTC_ADDR 0xa0000048
+#define RTC_ADDR 0x02000000   // CLINT mtime, counts cycles
 
 static uint64_t boot_time;
 
