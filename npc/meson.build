@@ -27,6 +27,7 @@ vsrcs = files(
   'vsrc/npc_pkg.sv',
   'vsrc/sim_observer.sv',
   'vsrc/Arbiter.sv',
+  'vsrc/Core.sv',
   'vsrc/EXU.sv',
   'vsrc/IDU.sv',
   'vsrc/IFU.sv',
