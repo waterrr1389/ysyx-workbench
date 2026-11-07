@@ -1,6 +1,7 @@
 # NPC: the Verilator model of the core plus its C++ harness.
 #   meson setup build-npc npc                                (from the workbench root)
 #   meson setup build-npc-diff npc -Ddifftest=true
+#   meson setup build-npc-soc npc -Dsoc=true               (the core inside ysyxSoC)
 #   ninja -C build-npc
 # Each build directory is one configuration, so models built with different
 # options live side by side. Options are listed in meson.options.
@@ -17,13 +18,14 @@ conf.set10('NPC_ITRACE', get_option('itrace'))
 conf.set10('NPC_FTRACE', get_option('ftrace'))
 conf.set10('NPC_MTRACE', get_option('mtrace'))
 conf.set10('NPC_DIFFTEST', get_option('difftest'))
+conf.set10('NPC_SOC', get_option('soc'))
 conf.set('NPC_NEED_INST_TRACE', '(NPC_ITRACE || NPC_FTRACE)')
 config_h = configure_file(output: 'npc_config.h', configuration: conf)
 
 ## Sources
 
 # npc_pkg.sv first: the package must be compiled before the modules that import it.
-vsrcs = files(
+core_vsrcs = files(
   'vsrc/npc_pkg.sv',
   'vsrc/sim_observer.sv',
   'vsrc/Arbiter.sv',
@@ -35,12 +37,63 @@ vsrcs = files(
   'vsrc/IFU.sv',
   'vsrc/LSU.sv',
   'vsrc/RegFile.sv',
-  'vsrc/SRAM.sv',
-  'vsrc/top.sv',
-  'vsrc/UART.sv',
   'vsrc/WBU.sv',
-  'vsrc/Xbar.sv',
 )
+
+if get_option('soc')
+  soc = workbench / 'ysyxSoC'
+  vsrcs = core_vsrcs + files(
+    'vsrc/ysyx_25110272.sv',
+    '../ysyxSoC/build/ysyxSoCFull.v',
+    '../ysyxSoC/perip/amba/apb_delayer.v',
+    '../ysyxSoC/perip/amba/axi4_delayer.v',
+    '../ysyxSoC/perip/bitrev/bitrev.v',
+    '../ysyxSoC/perip/flash/flash.v',
+    '../ysyxSoC/perip/gpio/gpio_top_apb.v',
+    '../ysyxSoC/perip/ps2/ps2_top_apb.v',
+    '../ysyxSoC/perip/psram/efabless/EF_PSRAM_CTRL.v',
+    '../ysyxSoC/perip/psram/efabless/EF_PSRAM_CTRL_wb.v',
+    '../ysyxSoC/perip/psram/psram.v',
+    '../ysyxSoC/perip/psram/psram_top_apb.v',
+    '../ysyxSoC/perip/sdram/core_sdram_axi4/sdram_axi.v',
+    '../ysyxSoC/perip/sdram/core_sdram_axi4/sdram_axi_core.v',
+    '../ysyxSoC/perip/sdram/core_sdram_axi4/sdram_axi_pmem.v',
+    '../ysyxSoC/perip/sdram/sdram.v',
+    '../ysyxSoC/perip/sdram/sdram_top_apb.v',
+    '../ysyxSoC/perip/sdram/sdram_top_axi.v',
+    '../ysyxSoC/perip/spi/rtl/spi_clgen.v',
+    '../ysyxSoC/perip/spi/rtl/spi_defines.v',
+    '../ysyxSoC/perip/spi/rtl/spi_shift.v',
+    '../ysyxSoC/perip/spi/rtl/spi_top.v',
+    '../ysyxSoC/perip/spi/rtl/spi_top_apb.v',
+    '../ysyxSoC/perip/uart16550/rtl/raminfr.v',
+    '../ysyxSoC/perip/uart16550/rtl/uart_defines.v',
+    '../ysyxSoC/perip/uart16550/rtl/uart_receiver.v',
+    '../ysyxSoC/perip/uart16550/rtl/uart_regs.v',
+    '../ysyxSoC/perip/uart16550/rtl/uart_rfifo.v',
+    '../ysyxSoC/perip/uart16550/rtl/uart_sync_flops.v',
+    '../ysyxSoC/perip/uart16550/rtl/uart_tfifo.v',
+    '../ysyxSoC/perip/uart16550/rtl/uart_top_apb.v',
+    '../ysyxSoC/perip/uart16550/rtl/uart_transmitter.v',
+    '../ysyxSoC/perip/vga/vga_top_apb.v',
+  )
+  # The peripherals include their defines files by bare name and carry #delays,
+  # which --no-timing ignores under the given timescale.
+  top_args = ['--top-module', 'ysyxSoCFull', '--timescale', '1ns/1ns', '--no-timing',
+              '-I' + soc / 'perip/uart16550/rtl', '-I' + soc / 'perip/spi/rtl']
+  lint_top = 'ysyx_25110272'
+  lint_srcs = core_vsrcs + files('vsrc/ysyx_25110272.sv')
+else
+  vsrcs = core_vsrcs + files(
+    'vsrc/SRAM.sv',
+    'vsrc/top.sv',
+    'vsrc/UART.sv',
+    'vsrc/Xbar.sv',
+  )
+  top_args = ['--top-module', 'top']
+  lint_top = 'top'
+  lint_srcs = vsrcs
+endif
 
 csrcs = files(
   'csrc/difftest/difftest.cc',
@@ -105,7 +158,8 @@ vtop = custom_target('Vtop',
   output: 'Vtop',
   depend_files: [headers, config_h],
   command: [verilator, '--trace-fst', '-cc', '--exe', '--build', '-j', '0',
-            '--top-module', 'top', '--autoflush', '+define+NPC_SIM',
+            # Both tops generate class Vtop, so the harness is the same.
+            top_args, '--prefix', 'Vtop', '--autoflush', '+define+NPC_SIM',
             '--Mdir', meson.current_build_dir() / 'obj',
             # -o is relative to --Mdir; the model goes next to obj/, where Meson expects it.
             '-o', '../Vtop',
@@ -133,4 +187,4 @@ custom_target('tracer-sim-rtl',
 
 # Style checks are off in the model build; run on demand.
 run_target('lint', command: [verilator, '--lint-only', '-Wall', '-Wno-PINCONNECTEMPTY',
-  '--top-module', 'top', '-I' + meson.project_source_root() / 'vsrc', vsrcs])
+  '--top-module', lint_top, '-I' + meson.project_source_root() / 'vsrc', lint_srcs])

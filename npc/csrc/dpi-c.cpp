@@ -82,3 +82,9 @@ void npc_abort_at(const char* reason) {
   }
   npc_abort("unknown", current_pc);
 }
+
+#if NPC_SOC
+// The SoC's MROM and flash models; nothing is loaded into them yet.
+extern "C" void flash_read(int32_t addr, int32_t *data) { assert(0); }
+extern "C" void mrom_read(int32_t addr, int32_t *data) { assert(0); }
+#endif

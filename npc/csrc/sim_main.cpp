@@ -20,6 +20,13 @@
 #include "trace/ftrace.h"
 #include "trace/iRingBuffer.h"
 
+// The standalone top names its clock clk; ysyxSoCFull uses the SoC's name.
+#if NPC_SOC
+#define TOP_CLOCK clock
+#else
+#define TOP_CLOCK clk
+#endif
+
 #define RESET_CYCLES    5
 #define NOP_INST        0x00000013u
 #define A0_REG_INDEX    10u
@@ -159,8 +166,8 @@ static void dump_wave() {
 
 // One cycle has one rising edge followed by the snapshot reporting edge.
 static void tick() {
-  top->clk = 1; top->eval(); dump_wave();
-  top->clk = 0; top->eval(); dump_wave();
+  top->TOP_CLOCK = 1; top->eval(); dump_wave();
+  top->TOP_CLOCK = 0; top->eval(); dump_wave();
 }
 
 bool step_one_cycle(void) {
@@ -197,7 +204,6 @@ void step_one_inst(void) {
 }
 
 void sim_init(void) {
-  contextp = new VerilatedContext;
   top = new Vtop{contextp};
   tfp = NULL;
   Verilated::traceEverOn(wave_file != NULL);
@@ -214,7 +220,7 @@ void sim_init(void) {
   }
 
   top->reset = 1;
-  top->clk = 0;
+  top->TOP_CLOCK = 0;
 
   init_npc_state();
   cpu_state_init();
@@ -259,6 +265,10 @@ int sim_status(void) {
 }
 
 int main(int argc, char** argv) {
+  // Before option parsing: the model reads plusargs from its own context.
+  contextp = new VerilatedContext;
+  contextp->commandArgs(argc, argv);
+
   const struct option table[] = {
       {"batch", no_argument, NULL, 'b'},
       {"elf", required_argument, NULL, 'e'},
