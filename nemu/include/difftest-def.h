@@ -16,26 +16,8 @@
 #ifndef __DIFFTEST_DEF_H__
 #define __DIFFTEST_DEF_H__
 
-#include <stdint.h>
-#include <macro.h>
-#include <generated/autoconf.h>
+#include <difftest/arch/riscv32.h>
 
 #define __EXPORT __attribute__((visibility("default")))
-enum { DIFFTEST_TO_DUT, DIFFTEST_TO_REF };
-typedef uint32_t (*difftest_query_u32_t)(void);
-
-#if defined(CONFIG_ISA_x86)
-# define DIFFTEST_REG_SIZE (sizeof(uint32_t) * 9) // GPRs + pc
-#elif defined(CONFIG_ISA_mips32)
-# define DIFFTEST_REG_SIZE (sizeof(uint32_t) * 38) // GPRs + status + lo + hi + badvaddr + cause + pc
-#elif defined(CONFIG_ISA_riscv)
-#include <difftest/arch/riscv32.h>
-#define DIFFTEST_REG_SIZE sizeof(riscv32_difftest_state_t)
-#elif defined(CONFIG_ISA_loongarch32r)
-# define DIFFTEST_REG_SIZE (sizeof(uint32_t) * 33) // GPRs + pc
-#elif defined(CONFIG_ISA_gameboy)
-#else
-# error Unsupport ISA
-#endif
 
 #endif

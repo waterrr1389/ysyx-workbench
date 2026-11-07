@@ -27,9 +27,9 @@ __EXPORT uint32_t difftest_get_state_size(void) {
 }
 
 __EXPORT void difftest_memcpy(paddr_t addr, void *buf, size_t n, bool direction) {
-  if (direction == DIFFTEST_TO_REF) {
+  if (direction == RISCV32_DIFFTEST_TO_REF) {
     memcpy(guest_to_host(addr), buf, n);
-  } else if (direction == DIFFTEST_TO_DUT) {
+  } else if (direction == RISCV32_DIFFTEST_TO_DUT) {
     memcpy(buf, guest_to_host(addr), n);
   }
 }
@@ -38,9 +38,9 @@ __EXPORT void difftest_regcpy(riscv32_difftest_state_t *dut,
                               uint32_t direction) {
   assert(dut != NULL);
 
-  if (direction == DIFFTEST_TO_REF) {
+  if (direction == RISCV32_DIFFTEST_TO_REF) {
     isa_difftest_import_state(&cpu, dut);
-  } else if (direction == DIFFTEST_TO_DUT) {
+  } else if (direction == RISCV32_DIFFTEST_TO_DUT) {
     isa_difftest_export_state(dut, &cpu);
   } else {
     panic("Invalid DiffTest direction %u", direction);
