@@ -83,7 +83,7 @@ No single unified unit-test framework exists at workspace root. Validate by runn
 - Code, tests, and commit messages record what was implemented.
 
 ## Commit & Pull Request Guidelines
-Recent commits are short, imperative, and often scoped (for example `fix: ...`, `refactor: ...`, or concise module-specific Chinese messages). Keep one logical change per commit.
+Keep one logical change per commit.
 
 PRs should include:
 - What changed and why.

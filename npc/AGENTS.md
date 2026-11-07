@@ -68,4 +68,4 @@ Changes to `SRAM.sv`, `Arbiter.sv`, `Xbar.sv`, `UART.sv`, `IFU.sv`, `LSU.sv` or 
 - A FAIL from `prove` comes with a counterexample trace under `build/<job>_prove/`; read it before touching the RTL or the assumptions. No FPGA board is used here, so NVBoard is the board substitute once it is wired into this Makefile. `NVBOARD_HOME/scripts/auto_pin_bind.py` reads only the `.nxdc` constraint file and the board pin table and never the HDL, so it works unchanged with generated Verilog; the signal names in the `.nxdc` must equal the top-level port names. Record the active `CONFIG`, the image used and whether any timeout was intentional when reporting results.
 
 ## Commit & Pull Request Guidelines
-Recent history favors short, imperative commit messages, optionally prefixed (`fix:`, `refactor:`) and scoped by module or feature. Keep one logical change per commit. PRs should state the purpose, the affected module, the exact build and run commands used, and relevant output when behavior changes.
+Keep one logical change per commit. PRs should state the purpose, the affected module, the exact build and run commands used, and relevant output when behavior changes.
