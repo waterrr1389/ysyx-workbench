@@ -2,6 +2,9 @@
 // instruction and data accesses into the single AXI4 master port the system sees.
 module Core
   import npc_pkg::*;
+#(
+  parameter word_t RESET_PC = DEFAULT_RESET_PC
+)
 (
   input  logic     clk,
   input  logic     reset,
@@ -23,7 +26,7 @@ module Core
   axi_req_t ifu_req, lsu_req, arb_req, clint_req;
   axi_rsp_t ifu_rsp, lsu_rsp, arb_rsp, clint_rsp;
 
-  IFU u_ifu (
+  IFU #(.RESET_PC(RESET_PC)) u_ifu (
     .clk, .reset,
     .out_valid(if_valid), .out_ready(if_ready), .out(if_out),
     .redirect_valid, .redirect_pc, .pc(),

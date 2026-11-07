@@ -3,7 +3,7 @@ package npc_pkg;
 
   typedef logic [31:0] word_t;
 
-  localparam word_t RESET_PC = 32'h8000_0000;
+  localparam word_t DEFAULT_RESET_PC = 32'h8000_0000;  // standalone top: start of SRAM
   localparam int    NR_GPR   = 16;  // RV32E
 
   // mtime, low word then high word. CLINT selects the word by addr[2],

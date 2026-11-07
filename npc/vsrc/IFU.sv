@@ -6,6 +6,9 @@
 // ports stay the same.
 module IFU
   import npc_pkg::*;
+#(
+  parameter word_t RESET_PC = DEFAULT_RESET_PC
+)
 (
   input  logic     clk,
   input  logic     reset,
