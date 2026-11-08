@@ -18,45 +18,6 @@
 ## Coding Style & Naming Conventions
 Verilog keeps the style already used in `vsrc/`: module and file names that match the function (`IDU.sv`, `EXU.sv`, `top.sv`), explicit signal widths, and `top` as the Verilator top module. C/C++ keeps small functions and warning-free builds. Beyond that, follow the workspace root `../AGENTS.md`.
 
-## Chisel Conventions
-These apply to Chisel sources added under `npc/`. Chisel breaks APIs between releases far more often than Verilog does, and knowledge of current Chisel is thin compared with mainstream languages, so the version and the API surface are pinned deliberately rather than tracked.
-
-### Versions and API surface
-- Pin the Chisel version in the build file. Do not upgrade opportunistically; upgrade only when a needed feature requires it, and re-run the RTL tests in the same change.
-- Stay inside this subset: `Module`, `RawModule` (for purely combinational blocks, which then carry no clock or reset ports), `IO`, `Wire`, `Reg`, `RegInit`, `when`/`elsewhen`/`otherwise`, `switch`/`is`, `Mux`, `Cat`, `VecInit`, `ChiselEnum`, plus the handshake pieces of `chisel3.util` that have stayed stable since Chisel 3: `Bundle`, `Flipped`, `Decoupled`, `.fire`, `<>`, `Queue`, the table helpers `MuxLookup`, `ListLookup`, `BitPat` for decoding, and the bit helpers `Fill`, `Reverse`, `MuxCase`. Methods on `UInt`/`SInt` from `chisel3._` itself (`asSInt`, `asUInt`, `pad`, `orR`, `andR`, `xorR`, `asTypeOf`) need no listing. Plain Scala functions and collections (`Seq.tabulate`, `map`) that generate hardware are fine. Do not reach for experimental APIs. The single sanctioned exception is `chisel3.util.circt.dpi`, which is how the design reaches the C memory model.
-- Every register uses `RegInit`. A bare `Reg` has no reset value and reads as X under Verilator.
-- `import chisel3._` goes first, then a blank line, then the remaining imports alphabetically. No wildcard imports other than `chisel3._`; name what is used from `chisel3.util`, as in `import chisel3.util.{Decoupled, Queue}`.
-- One module per file, and the filename is the name of the top-level class it holds.
-
-### Naming
-- `lowerCamelCase` for values and methods, `UpperCamelCase` for classes, objects and constants.
-- No `snake_case`. The compiler inserts underscores when it flattens aggregates, so `msgRec` beside `msg.valid` and `msg.addr` yields `msg_valid`, `msg_addr`, `msgRec`; naming it `msg_rec` would read as a fourth field of `msg` in the waveform.
-- Acronyms are treated as words: `findGcd`, `stateForFsm`, `fifoGenerator`, not `findGCD`, `stateForFSM`, `FIFOGenerator`.
-
-### Combinational logic and state machines
-- Last connect wins. Write defaults first, then override inside `when` blocks:
-
-  ```scala
-  req := false.B
-  when (ready) { req := true.B }
-  ```
-
-- Combinational outputs must be assigned on every path or elaboration fails. That check is intentional; do not work around it.
-- State machines use `ChiselEnum` with `switch`/`is`, written as one block that assigns `state` directly. There is no separate `next_state`; last connect supplies the priority order.
-
-### Top-level IO
-Declare top-level ports flat, as in `val led = IO(Output(UInt(16.W)))`, not inside an `io` Bundle. A Bundle named `io` flattens to `io_led` and similar, and every such name then has to be repeated in the constraint file, the C++ harness and the Makefile. This applies only to the module the harness or the SoC instantiates; interfaces between internal modules should be Bundles, with `Decoupled` for anything that handshakes.
-
-### Fitting the existing Verilator flow
-- Chisel names the clock and reset ports `clock` and `reset`. `vsrc/top.v` names them `clk` and `reset`, and `csrc/sim_main.cpp` drives `top->clk`, so either drive `clock` from the harness or keep a thin wrapper module named `top` that renames the ports.
-- `meson.build` lists every RTL source explicitly in `vsrcs`, with `npc_pkg.sv` first; a new or generated `.sv` that is not added there is silently left out of the model. Harness sources go in `csrcs` and headers in `headers`, or edits to them do not rebuild the model.
-- `--top-module top` only holds while a module named `top` stays the top, which is another reason to keep the wrapper.
-- Memory access goes through `import "DPI-C" pmem_read/pmem_write` in `vsrc/SRAM.v`. Chisel 7 expresses the same calls with `chisel3.util.circt.dpi`: `RawUnclockedNonVoidFunctionCall` for the combinational read and `RawClockedVoidFunctionCall` for the write. Both lower to `import "DPI-C"`, so `csrc/dpi-c.cpp` is reused unchanged. These intrinsics are absent from Chisel 6.x, which is a concrete reason to stay on 7.x. A BlackBox carrying an inline `import "DPI-C"`, or plain memory ports driven from C++, remain valid alternatives.
-- Replacing existing RTL rather than adding an isolated block is a cross-module change; write the specification under `../development/` and get it approved first, as the workspace root `../AGENTS.md` requires.
-
-### Formatting
-`.scalafmt.conf` in this directory holds the settings (`maxColumn = 120`, `preset = defaultWithAlign`, `rewrite.imports.sort = scalastyle`, `rewrite.trailingCommas.style = never`) and pins the formatter version. Run it before committing; under Mill that is `./mill <module>.reformat`, with `./mill <module>.checkFormat` for CI. Do not enable `rewrite.imports.expand`: it would expand `import chisel3._` and break the import convention above.
-
 ## Testing Guidelines
 Validation is run-oriented: for an RTL change run `make sim`, then a program through AM (`make -C ../am-kernels/tests/cpu-tests ARCH=riscv32i-npc run ALL=dummy`), and inspect the waveform with `make wave` when behavior changes.
 
