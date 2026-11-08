@@ -14,7 +14,8 @@ lsu_SRCS := $(RTL)/LSU.sv lsu_check.sv
 
 all: $(JOBS)
 
-# Yosys reads neither packages nor packed structs; sv2v lowers each job to one Verilog file.
+# Yosys's built-in frontend cannot parse parts of the SystemVerilog used here, such as
+# package imports in module headers and `inside`; sv2v lowers each job to one Verilog file.
 $(BUILD_DIR)/%.v: $(PKG) Makefile
 	@mkdir -p $(BUILD_DIR)
 	sv2v -DFORMAL --exclude=Assert $(PKG) $($*_SRCS) > $@
