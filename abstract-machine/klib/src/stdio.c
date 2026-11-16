@@ -78,28 +78,32 @@ int printf(const char *fmt, ...) {
 // with spaces. An unsupported specification is copied to the output unchanged.
 int vsprintf(char *out, const char *fmt, va_list args) {
     char *start = out;
-    const char *p = fmt;
+    const char *cursor = fmt;
 
-    while (*p != '\0') {
-        if (*p != '%') {
-            out = write_char(out, *p++);
+    while (*cursor != '\0') {
+        if (*cursor != '%') {
+            out = write_char(out, *cursor);
+            cursor++;
             continue;
         }
 
-        const char *spec = p++;
+        const char *next = cursor + 1;
         bool zero_pad = false;
         int width = 0;
 
-        while (*p == '0') {
+        while (*next == '0') {
             zero_pad = true;
-            p++;
+            next++;
         }
-        while (*p >= '0' && *p <= '9') {
-            width = width * 10 + (*p - '0');
-            p++;
+        while (*next >= '0' && *next <= '9') {
+            width = width * 10 + (*next - '0');
+            next++;
         }
 
-        switch (*p) {
+        const char conversion = *next;
+        if (conversion != '\0') next++;
+
+        switch (conversion) {
             case 'd': {
                 char buf[11];
                 int len = format_int(buf, va_arg(args, int));
@@ -121,13 +125,12 @@ int vsprintf(char *out, const char *fmt, va_list args) {
                 out = write_char(out, '%');
                 break;
             default:
-                // Includes a '%' at the end of fmt, where *p is the terminator.
-                for (const char *q = spec; q <= p && *q != '\0'; q++) {
-                    out = write_char(out, *q);
+                for (const char *literal = cursor; literal != next; literal++) {
+                    out = write_char(out, *literal);
                 }
                 break;
         }
-        if (*p != '\0') p++;
+        cursor = next;
     }
 
     *out = '\0'; // append '\0' as the end of string
